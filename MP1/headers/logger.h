@@ -1,33 +1,19 @@
-//don't want multiple declarations
 #ifndef AG_LOGGER
 #define AG_LOGGER
+//don't want multiple declarations
 
 //include the boys
-#include <iomanip>
-#include <locale>
-#include <sstream>
 #include <string>
 #include <ctime>
 #include <fstream>
+#include "utility.h"
+#include "errorCodes.h"
+#include "fileHandler.h"
 
 //only include std I/O statements for debugging or task progress reports. Never throw errors here. Return error codes
 #include <iostream>
 
 using namespace std;
-
-//error types go here
-#define IO_ERROR 1
-#define NETWORK_ERROR 2
-#define HANDSHAKE_FAILURE 3
-#define DEST_NOT_FOUND 4
-#define INVALID_OPERATION 5
-
-//error codes go here
-#define NO_ERROR 0
-#define ERROR_NO_OPEN 1
-#define ERROR_NO_WRITE 2
-#define ERROR_IO_WRITE 3
-#define ERROR_IO_LOGIC 4
 
 //other constants (names are usually self explanatory)
 #define LOG_NAME_PREFIX "machine."
@@ -35,8 +21,6 @@ using namespace std;
 #define KEY_VALUE_SEPERATOR ":"
 #define TIMESTAMP_MSG_SEPERATOR "-"
 #define LOG_FILE_BASE_PATH "/tmp/"
-#define SUCCESS 0 //code for success
-#define FAILURE -1//code for fail
 
 class LogFileCreationDetails {
 	
@@ -59,13 +43,11 @@ class ErrorLog {
 	//-----------------------------------------------------------//
 	//--------------LOGGING HELPER FUNCTIONS---------------------//
 	//-----------------------------------------------------------//
-
-	//utility function to convert an integer to a string
-	string intToString(int num) {
-		return static_cast<ostringstream*>( &(ostringstream() << num) )->str();
-	} 
-
-	//utility function to convert error type into a string
+	/**
+	 * [utility function to convert error type into a string]
+	 * @param  errType integer specifying error type
+	 * @return the error type converted to string
+	 */
 	string errorTypeToErrorString(int errType) {
 		switch (errType) {
 			case 1: 
@@ -89,18 +71,27 @@ class ErrorLog {
 		}
 	}
 
-	//constructs the log file name
+	/**
+	 * [constructs the log file name]
+	 * @param  machineID id of machine
+	 * @return log filename
+	 */
 	string getLogName(int machineID) {
-
 		//build the name, put the machine id in the middle. Seperate into three parts with '.'
 		string logFileName(LOG_NAME_PREFIX);
-		logFileName += intToString(machineID);		
+		logFileName += Utility::intToString(machineID);
 		logFileName += LOG_NAME_SUFFIX;
 
 		return logFileName;
 	}
 
-	//constructs the log msg
+	
+	/**
+	 * [constructs the log msg]
+	 * @param  errType integer whoch holds error type
+	 * @param  msg the log message
+	 * @return the fully constructed log message
+	 */
 	string buildLogMsg(int errType, string msg) {
 		
 		time_t timer;
@@ -113,7 +104,7 @@ class ErrorLog {
 		
 		//construct and append the timestamp
 		time(&timer);
-		logMsg += intToString((int)timer);
+		logMsg += Utility::intToString((int)timer);
 		
 		//add the seperator
 		logMsg += TIMESTAMP_MSG_SEPERATOR;
@@ -124,59 +115,17 @@ class ErrorLog {
 		return logMsg;
 	}
 
-	int logToFile(string logFileName, string logMsg, int *errCode) {
-		
-		//get the path
-		string logFilePath = LOG_FILE_BASE_PATH;
-		logFilePath += logFileName;
-
-		//open the file
-		ofstream logFileWriter;
-		logFileWriter.open(logFilePath.c_str(), ios::out | ios::app);
-
-		//some error handling
-		if(!logFileWriter.is_open()) {
-			//file did not open. Dunno why. Maybe perms?
-			*errCode = ERROR_NO_OPEN;
-			return FAILURE;
-		}
-
-		//write to the file
-		logFileWriter<<logMsg<<endl;
-
-		//error handling
-		if(!logFileWriter.good()) {
-			//write failed for some reason
-			if(logFileWriter.fail() && logFileWriter.bad()){
-				//write failed because the I/O operation failed (bad and fail bit set)
-				*errCode = ERROR_IO_WRITE;
-				return FAILURE;
-			}
-			else if(logFileWriter.fail()) {
-				//write failed because there was a logical I/O error (only fail bit set)
-				*errCode = ERROR_IO_LOGIC;
-				return FAILURE;
-			}
-			else {
-				//write failed. dunno exact reason
-				*errCode = ERROR_NO_WRITE;
-				return FAILURE;
-			}
-		}
-		
-		//close the file
-		logFileWriter.close();
-
-		//everything was ok, so return success
-		*errCode = NO_ERROR;
-		return SUCCESS;
-
-	}
-
+	
 	//-----------------------------------------------------------//
 	//--------------LOG CREATOR HELPER FUNCTIONS-----------------//
 	//-----------------------------------------------------------//
 
+	/**
+	 * [get size of log file in number or bytes]
+	 * @param  size size of log required
+	 * @param  multiplierRep the multiplier K,M or G
+	 * @return the number of bytes
+	 */
 	long int getBytes(float size, char multiplierRep) {
 		long int multiplier = 0;
 		switch(multiplierRep) {
@@ -200,6 +149,12 @@ class ErrorLog {
 		return (long int)(size * multiplier); 
 	}
 
+	/**
+	 * [Cap the log size to 2G]
+	 * @param  size the size of log
+	 * @param  multiplier the multiplier that is used. K, M or G
+	 * @return the capped size
+	 */
 	float capSize(float size, char multiplier) {
 		//cap at 2 GB
 		if (multiplier == 'G' || multiplier == 'g') {
@@ -211,6 +166,13 @@ class ErrorLog {
 		return size;
 	}
 
+	/**
+	 * [Fills the log with messages based on a probability distribution]
+	 * @param  machineID the id of the machine
+	 * @param  noOfLines the no of lines in the log
+	 * @param  errCode pointer to store error code if any
+	 * @return the success status
+	 */
 	int randomWriteLogFile(int machineID, int noOfLines, int *errCode) {
 
 		int probablities[] = {0, 10, 25, 50};
@@ -223,14 +185,11 @@ class ErrorLog {
 			random = rand() % 100 + 1;
 			if( random <= probablities[1] ) {
 				ret = this->logError(machineID, 2, "Unable to connect to network. Check the connection", errCode);
-			}
-			else if ( random <= probablities[2]) {
+			} else if ( random <= probablities[2]) {
 				ret = this->logError(machineID, 3, "Failed to authenticate the peer/client. Check the HS", errCode);
-			}
-			else if ( random <= probablities[3]) {
+			} else if ( random <= probablities[3]) {
 				ret = this->logError(machineID, 4, "Could not find specified destination. Check IP and port", errCode);
-			}
-			else {
+			} else {
 				ret = this->logError(machineID, 5, "Tried to perform an invalid operation. Check the code", errCode);
 			}
 
@@ -244,17 +203,29 @@ class ErrorLog {
 	//-----------------------------------------------------------//
 	//----------------------LOGGING FUNCTION---------------------//
 	//-----------------------------------------------------------//
-	//for logging errors
+
+	/**
+	 * [request to log an error]
+	 * @param  machineID the machine ID
+	 * @param  errType the error type
+	 * @param  msg the message that has to go into the log
+	 * @param  errCode space to return error code if any
+	 * @return success status
+	 */
 	int logError(int machineID, int errType, string msg, int *errCode) {
 
 		//get the log msg
 		string logMsg = buildLogMsg(errType, msg);
 
 		//get the log file name
-		string logFile = getLogName(machineID);
+		string logFileName = getLogName(machineID);
+
+		//get the path
+		string logFilePath = LOG_FILE_BASE_PATH;
+		logFilePath += logFileName;
 
 		//log error to file
-		int success = logToFile(logFile, logMsg, errCode);
+		int success = FileHandler::writeToFile(logFilePath, logMsg, errCode);
 
 		if( success == FAILURE) //there was file I/O error. so no point doing anything else. Just return
 			return success;
@@ -269,6 +240,13 @@ class ErrorLog {
 	//---------------------LOG CREATOR FUNCTION------------------//
 	//-----------------------------------------------------------//
 
+	/**
+	 * [create log file of specified size]
+	 * @param machineID the id of the machine
+	 * @param size the size of log
+	 * @param multiplier the multiplie (K, M or G)
+	 * @param details space to return the details about creation
+	 */
 	void createLogFile(int machineID, float size, char multiplier, LogFileCreationDetails *details) {
 		//cap size
 		size = capSize(size, multiplier);

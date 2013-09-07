@@ -2,6 +2,7 @@
 #include <string>
 #include <ctime>
 #include "headers/logger.h"
+#include "headers/errorCodes.h"
 
 using namespace std;
 
@@ -29,16 +30,16 @@ int main() {
 	if(details->returnStatus == -1) {
 		cout<<endl<<"****ERROR****: ";
 		switch(details->errCode) {
-			case 1 : 
+			case ERROR_NO_OPEN : 
 					cout<<"Error opening file for logging"<<endl;
 					break;
-			case 2 : 
+			case ERROR_NO_WRITE : 
 					cout<<"Error writing to log file"<<endl;
 					break;
-			case 3 : 
+			case ERROR_IO_WRITE : 
 					cout<<"Error in I/O device write"<<endl;
 					break;
-			case 4 : 
+			case ERROR_IO_LOGIC : 
 					cout<<"Error in I/O device logic"<<endl;
 					break;
 			case 0 :
@@ -47,11 +48,9 @@ int main() {
 					break;
 		}
 		cout<<endl;
-	}
-	else if (details->returnStatus == 0) {
+	} else if (details->returnStatus == 0) {
 		cout<<endl<<"Successfully created log file of size "<<details->bytes<<" bytes and containing "<<details->noOfLines<<" lines"<<endl;
-	}
-	else {
+	} else {
 		cout<<"Unknown return status ["<<details->returnStatus<<"] while trying to create log file. Possible logic error in logger.h";
 	}
 
