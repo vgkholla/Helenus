@@ -117,7 +117,7 @@ class CommandLineTools {
 		}
 
 		cmdToMerge += " > " + mergeFilePath + " 2>&1";
-		cout<<endl<<"The merge command is: "<<cmdToMerge<<endl;
+		//cout<<endl<<"The merge command is: "<<cmdToMerge<<endl;
 		executeCmd(cmdToMerge, details);
 		return mergeFilePath;
 
