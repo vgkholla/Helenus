@@ -272,7 +272,7 @@ class ErrorLog {
 	void createLogFile(int machineID, float size, char multiplier, LogFileCreationDetails *details) {
 		//cap size
 		size = capSize(size, multiplier);
-		
+
 		//get number of bytes
 		details->bytes = getBytes(size, multiplier);
 

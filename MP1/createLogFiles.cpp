@@ -27,24 +27,26 @@ int main() {
 
 	//error handling
 	if(details->returnStatus == -1) {
+		cout<<endl<<"****ERROR****: ";
 		switch(details->errCode) {
 			case 1 : 
-					cout<<endl<<"Error opening file for logging"<<endl;
+					cout<<"Error opening file for logging"<<endl;
 					break;
 			case 2 : 
-					cout<<endl<<"Error writing to log file"<<endl;
+					cout<<"Error writing to log file"<<endl;
 					break;
 			case 3 : 
-					cout<<endl<<"Error in I/O device write"<<endl;
+					cout<<"Error in I/O device write"<<endl;
 					break;
 			case 4 : 
-					cout<<endl<<"Error in I/O device logic"<<endl;
+					cout<<"Error in I/O device logic"<<endl;
 					break;
 			case 0 :
 			default: 
 					cout<<"Unknown error while trying to create/write log file"<<endl;
 					break;
 		}
+		cout<<endl;
 	}
 	else if (details->returnStatus == 0) {
 		cout<<endl<<"Successfully created log file of size "<<details->bytes<<" bytes and containing "<<details->noOfLines<<" lines"<<endl;
