@@ -200,12 +200,12 @@ class ErrorLog {
 		return (long int)(size * multiplier); 
 	}
 
-	int capSize(float size, char multiplier) {
+	float capSize(float size, char multiplier) {
 		//cap at 2 GB
 		if (multiplier == 'G' || multiplier == 'g') {
-			if(size > 2) {
+			if(size > 2.0) {
 				//cout<<endl<<"Capping the log file size to 2G"<<endl;
-				size = 2;
+				size = 2.0;
 			}
 		}
 		return size;
@@ -269,7 +269,10 @@ class ErrorLog {
 	//---------------------LOG CREATOR FUNCTION------------------//
 	//-----------------------------------------------------------//
 
-	void createLogFile(int machineID, int size, char multiplier, LogFileCreationDetails *details) {
+	void createLogFile(int machineID, float size, char multiplier, LogFileCreationDetails *details) {
+		//cap size
+		size = capSize(size, multiplier);
+		
 		//get number of bytes
 		details->bytes = getBytes(size, multiplier);
 
