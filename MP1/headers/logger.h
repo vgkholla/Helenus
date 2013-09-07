@@ -10,7 +10,7 @@
 #include <ctime>
 #include <fstream>
 
-//only include std I/O statements for debugging. Never throw errors here. Return error codes
+//only include std I/O statements for debugging or task progress reports. Never throw errors here. Return error codes
 #include <iostream>
 
 using namespace std;
@@ -38,7 +38,28 @@ using namespace std;
 #define SUCCESS 0 //code for success
 #define FAILURE -1//code for fail
 
+class LogFileCreationDetails {
+	
+	public:
+	int returnStatus;
+	int errCode;
+	long int bytes;
+	int noOfLines;
+
+	LogFileCreationDetails() {
+		returnStatus = -1;
+		errCode = 0;
+		bytes = 0;
+		noOfLines = 0;
+	}
+};
+
 class ErrorLog {
+
+	//-----------------------------------------------------------//
+	//--------------LOGGING HELPER FUNCTIONS---------------------//
+	//-----------------------------------------------------------//
+
 	//utility function to convert an integer to a string
 	string intToString(int num) {
 		return static_cast<ostringstream*>( &(ostringstream() << num) )->str();
@@ -152,7 +173,78 @@ class ErrorLog {
 
 	}
 
+	//-----------------------------------------------------------//
+	//--------------LOG CREATOR HELPER FUNCTIONS-----------------//
+	//-----------------------------------------------------------//
+
+	long int getBytes(float size, char multiplierRep) {
+		long int multiplier = 0;
+		switch(multiplierRep) {
+			case 'K':
+			case 'k':
+				multiplier = 1024;
+				break;
+			case 'M':
+			case 'm':
+				multiplier = 1024 * 1024;
+				break;
+			case 'G':
+			case 'g':
+				multiplier = 1024 * 1024 * 1024;
+				break;
+			default:
+				multiplier = 0;
+				break;
+		}
+		//cout<<endl<<"The multiplier is "<<multiplier<<endl;
+		return (long int)(size * multiplier); 
+	}
+
+	int capSize(float size, char multiplier) {
+		//cap at 2 GB
+		if (multiplier == 'G' || multiplier == 'g') {
+			if(size > 2) {
+				//cout<<endl<<"Capping the log file size to 2G"<<endl;
+				size = 2;
+			}
+		}
+		return size;
+	}
+
+	int randomWriteLogFile(int machineID, int noOfLines, int *errCode) {
+
+		int probablities[] = {0, 10, 25, 50};
+		int random;
+		int i = 0;
+		int ret;
+
+		srand(time(0));
+		for (i =0; i < noOfLines; i++) {
+			random = rand() % 100 + 1;
+			if( random <= probablities[1] ) {
+				ret = this->logError(machineID, 2, "Unable to connect to network. Check the connection", errCode);
+			}
+			else if ( random <= probablities[2]) {
+				ret = this->logError(machineID, 3, "Failed to authenticate the peer/client. Check the HS", errCode);
+			}
+			else if ( random <= probablities[3]) {
+				ret = this->logError(machineID, 4, "Could not find specified destination. Check IP and port", errCode);
+			}
+			else {
+				ret = this->logError(machineID, 5, "Tried to perform an invalid operation. Check the code", errCode);
+			}
+
+			if(ret == -1)
+				return ret;
+		}
+		return ret;
+	}
+
 	public:
+	//-----------------------------------------------------------//
+	//----------------------LOGGING FUNCTION---------------------//
+	//-----------------------------------------------------------//
+	//for logging errors
 	int logError(int machineID, int errType, string msg, int *errCode) {
 
 		//get the log msg
@@ -172,6 +264,22 @@ class ErrorLog {
 		//return success status
 		return success;
 	} 
+
+	//-----------------------------------------------------------//
+	//---------------------LOG CREATOR FUNCTION------------------//
+	//-----------------------------------------------------------//
+
+	void createLogFile(int machineID, int size, char multiplier, LogFileCreationDetails *details) {
+		//get number of bytes
+		details->bytes = getBytes(size, multiplier);
+
+		//assume each line is 80 bytes
+		details->noOfLines = details->bytes/80;
+
+		//random write into log file
+		details->returnStatus = randomWriteLogFile(machineID, details->noOfLines, &details->errCode);
+	}
+
 };
 
 //end of header file
