@@ -41,8 +41,8 @@ class CommandLineTools {
 	 * [tags the file to say which machine output came from]
 	 * @param  machineID 
 	 * @param  filePath
+	 * @param  details Command result details like return status and error codes
 	 * @return command exit status
-	 * IMP: before you call this function, make sure the command processor is available. (a call to system(NULL)). For an example, check CommandLineTools::executeCmd.
 	 */
 	static void tagFile(int machineID, string filePath, CommandResultDetails *details) {
 		//first build the tag command for tagging the file
@@ -92,8 +92,10 @@ class CommandLineTools {
 		cmd += " 2>&1";
 		//cmd has been totally built now
 
+		//tag the file
 		tagFile(machineID, filePath, details);
 
+		//if tagging succeeded, execute command
 		if(details->returnStatus == 0) {
 			executeCmd(cmd, details);
 		}
@@ -101,6 +103,14 @@ class CommandLineTools {
 		return filePath;
 	}
 
+	/**
+	 * [merges output from files]
+	 * @param  files the file paths
+	 * @param  noOfFiles the number of files
+	 * @param  details the command result details object
+	 * @param  stripTags optional to stripTags. 1 if you want tags stripped (support no added yet)
+	 * @return
+	 */
 	static string mergeFileOutputs(string *files, int noOfFiles, CommandResultDetails *details, int stripTags) {
 		//add support for strip tags later if required
 
@@ -120,7 +130,6 @@ class CommandLineTools {
 		//cout<<endl<<"The merge command is: "<<cmdToMerge<<endl;
 		executeCmd(cmdToMerge, details);
 		return mergeFilePath;
-
 	}
 
 	static void executeCmd(string cmd, CommandResultDetails *details) {
