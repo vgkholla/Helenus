@@ -4,9 +4,9 @@
 
 #define SUCCESS 0 //code for success
 #define FAILURE -1//code for fail
+#define NO_ERROR 0
 
 //I/O error codes go here
-#define NO_ERROR 0
 #define ERROR_NO_OPEN 1
 #define ERROR_NO_WRITE 2
 #define ERROR_NO_READ 3
@@ -20,5 +20,8 @@
 #define DEST_NOT_FOUND 4
 #define INVALID_OPERATION 5
 
+//distributed command exection error codes
+#define COMMAND_FAILED_TO_EXEC_AT_PEER 1
+#define FILE_TRANSFER_FAILED 2
 
 #endif

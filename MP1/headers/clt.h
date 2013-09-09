@@ -13,7 +13,6 @@
 using namespace std;
 
 //error codes go here
-#define NO_ERROR 0
 #define COMMAND_PROCESSOR_NOT_AVAILABLE 1
 
 //other constants
@@ -30,8 +29,12 @@ class CommandResultDetails{
 	int errCode;
 
 	CommandResultDetails() {
-		returnStatus = -1;
-		errCode = 0;
+		reset();
+	}
+
+	void reset() {
+		returnStatus = FAILURE;
+		errCode = NO_ERROR;
 	}
 };
 
@@ -96,7 +99,7 @@ class CommandLineTools {
 		tagFile(machineID, filePath, details);
 
 		//if tagging succeeded, execute command
-		if(details->returnStatus == 0) {
+		if(details->returnStatus == SUCCESS) {
 			executeCmd(cmd, details);
 		}
 
@@ -132,14 +135,37 @@ class CommandLineTools {
 		return mergeFilePath;
 	}
 
+	/**
+	 * [executes given command]
+	 * @param cmd     [the command to be executed]
+	 * @param details [return details]
+	 */
 	static void executeCmd(string cmd, CommandResultDetails *details) {
 		//check if a command processor is available
 		if(system(NULL)) { 
 			details->returnStatus = system(cmd.c_str());
 		} else {
-			details->returnStatus = -1;
+			details->returnStatus = FAILURE;
 			details->errCode = COMMAND_PROCESSOR_NOT_AVAILABLE;
 		}
+	}
+
+	/**
+	 * [scps a given file to the destination]
+	 * @param localFilePath  [path of file locally]
+	 * @param destination    [destination]
+	 * @param remoteFilePath [path at destination]
+	 * @param details        [return details]
+	 */
+	//probably not going to use this since it requires a password
+	static void scpFile(string localFilePath, string destination, string remoteFilePath, CommandResultDetails *details) {
+
+		//make the scp command
+		string scpCmd = "scp " + localFilePath + " " + destination + ":" + remoteFilePath + " > /dev/null 2>&1";
+
+		cout<<scpCmd<<endl;
+		//execute the command
+		executeCmd(scpCmd, details);
 	}
 };
 
