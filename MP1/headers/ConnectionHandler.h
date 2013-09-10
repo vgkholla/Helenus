@@ -2,9 +2,10 @@
 #define CONNECTIONHANDLER_HEADER
 
 #include <iostream>
+#include <map>
+#include <string>
 
-#include "Peer.h"
-
+using namespace std;
 
 namespace P2P
 {
@@ -23,7 +24,10 @@ namespace P2P
             Peer      *owner;
 
         public:
+            std::string filepath;
+
             std::map<int,std::string> peers;
+
             std::string data;
 
             /**
@@ -31,8 +35,9 @@ namespace P2P
              *
              * @param owner  Owner.
              */
-            explicit ConnectionHandler(Peer *owner,
-                                       int src);
+            explicit ConnectionHandler(int src,
+                                       string filename,
+                                       std::list<int> dest);
 
             /**
              * Distructor.
@@ -41,10 +46,10 @@ namespace P2P
 
         private:
             /** No use of the default constructor */
-            ConnectionHandler();
+            //ConnectionHandler();
 
             /** No use of the copy constructor */
-            ConnectionHandler(ConnectionHandler &);
+            //ConnectionHandler(ConnectionHandler &);
 
             static void* SocketHandler(void *lp);
             static void* ClientHandler(void *lp);

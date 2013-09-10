@@ -6,7 +6,7 @@
 #include <syslog.h>
 #include <list>
 
-#include "Peer.h"
+#include "ConnectionHandler.h"
 using namespace std;
 using namespace P2P;
 
@@ -42,7 +42,7 @@ int main(int argc,
         }
     }
     cout << filename << std::endl;
-    Peer peer(src,filename,dest);
+    ConnectionHandler conn(src,filename,dest);
     syslog(LOG_INFO,"\nPeer ran");
     while (1) {}
     return (0);

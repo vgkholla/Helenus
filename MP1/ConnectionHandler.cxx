@@ -19,8 +19,9 @@
 using namespace std;
 using namespace P2P;
 
-ConnectionHandler::ConnectionHandler(Peer *owner,
-                                     int src)
+ConnectionHandler::ConnectionHandler(int src,
+                                     std::string filename,
+                                     std::list<int> dest)
 {
     int host_port= src;
     struct sockaddr_in my_addr;
@@ -34,7 +35,9 @@ ConnectionHandler::ConnectionHandler(Peer *owner,
     int* csock;
     sockaddr_in sadr;
     pthread_t thread_id=0;
-    for (std::list<int>::iterator it = owner->destinations.begin(); it != owner->destinations.end(); it++)
+
+    filepath = filename;
+    for (std::list<int>::iterator it = dest.begin(); it != dest.end(); it++)
         peers[*it] = "unconnected";
 
     for(std::map<int,string>::const_iterator it = peers.begin();
