@@ -66,7 +66,8 @@ int main(){
     printf("Enter some text to send to the server (press enter)\n");
     string cmd = CommandLineTools::showAndHandlePrompt(1);
     //fgets(buffer, 1024, stdin);
-    memcpy(buffer,"client",6);
+    strcat(buffer, "client@");
+    strcat(buffer, cmd.c_str());
     buffer[strlen(buffer)]='\0';
     
     if( (bytecount=send(hsock, buffer, strlen(buffer),0))== -1){
