@@ -70,21 +70,6 @@ class ErrorLog {
 				break;
 		}
 	}
-
-	/**
-	 * [constructs the log file name]
-	 * @param  machineID id of machine
-	 * @return log filename
-	 */
-	string getLogName(int machineID) {
-		//build the name, put the machine id in the middle. Seperate into three parts with '.'
-		string logFileName(LOG_NAME_PREFIX);
-		logFileName += Utility::intToString(machineID);
-		logFileName += LOG_NAME_SUFFIX;
-
-		return logFileName;
-	}
-
 	
 	/**
 	 * [constructs the log msg]
@@ -199,6 +184,21 @@ class ErrorLog {
 		return ret;
 	}
 
+	/**
+	 * [constructs the log file name]
+	 * @param  machineID id of machine
+	 * @return log filename
+	 */
+	static string getLogName(int machineID) {
+		//build the name, put the machine id in the middle. Seperate into three parts with '.'
+		string logFileName(LOG_NAME_PREFIX);
+		logFileName += Utility::intToString(machineID);
+		logFileName += LOG_NAME_SUFFIX;
+
+		return logFileName;
+	}
+
+
 	public:
 	//-----------------------------------------------------------//
 	//----------------------LOGGING FUNCTION---------------------//
@@ -217,12 +217,8 @@ class ErrorLog {
 		//get the log msg
 		string logMsg = buildLogMsg(errType, msg);
 
-		//get the log file name
-		string logFileName = getLogName(machineID);
-
-		//get the path
-		string logFilePath = LOG_FILE_BASE_PATH;
-		logFilePath += logFileName;
+		//get the log file path
+		string logFilePath = getLogPath(machineID);
 
 		//log error to file
 		int success = FileHandler::writeToFile(logFilePath, logMsg, errCode);
@@ -235,6 +231,21 @@ class ErrorLog {
 		//return success status
 		return success;
 	} 
+
+	/**
+	 * [constructs the log file name]
+	 * @param  machineID id of machine
+	 * @return log filename
+	 */
+	static string getLogPath(int machineID) {
+		string logFileName = getLogName(machineID);
+
+		//get the path
+		string logFilePath = LOG_FILE_BASE_PATH;
+		logFilePath += logFileName;
+
+		return logFilePath;
+	}
 
 	//-----------------------------------------------------------//
 	//---------------------LOG CREATOR FUNCTION------------------//

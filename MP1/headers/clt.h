@@ -9,6 +9,7 @@
 #include <sstream>
 #include "utility.h"
 #include "errorCodes.h"
+#include "logger.h"
 
 using namespace std;
 
@@ -74,6 +75,22 @@ class CommandLineTools {
 
 		//return the command
 		return cmd;
+	}
+
+	static string parseGrepCmd(int machineID, string cmd) {
+		//if not grep return
+		if(cmd.find("grep") == string::npos) {
+			return cmd;
+		}
+
+		//the log file path
+		string logFilePath = ErrorLog::getLogPath(machineID);
+
+		//build the command
+		string fullCmd = "cat " + logFilePath + " | " + cmd;
+
+		return fullCmd;
+		
 	}
 
 	/**

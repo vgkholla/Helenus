@@ -59,6 +59,13 @@ void testStreamOutput(string cmd) {
 
 }
 
+void testParse(string cmd) {
+	cmd = CommandLineTools::parseGrepCmd(1, cmd);
+	CommandResultDetails *details = new CommandResultDetails();
+	CommandLineTools::tagAndExecuteCmd(1, cmd, details);
+
+}
+
 int main() {
 
 	//show the prompt
@@ -70,7 +77,9 @@ int main() {
 	
 	//testScp(cmd);
 	
-	testStreamOutput(cmd);
+	//testStreamOutput(cmd);
+	
+	testParse(cmd);
 
 	return 0;
 }
