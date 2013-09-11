@@ -15,6 +15,7 @@ namespace P2P
     typedef struct _mystruct{
         int *sock;
         void* owner;
+        string cmd;
     } mystruct;
 
     class ConnectionHandler
@@ -24,7 +25,7 @@ namespace P2P
             Peer      *owner;
 
         public:
-            std::string filepath;
+            int machine_no;
 
             std::map<int,std::string> peers;
 
@@ -36,7 +37,7 @@ namespace P2P
              * @param owner  Owner.
              */
             explicit ConnectionHandler(int src,
-                                       string filename,
+                                       int machineno,
                                        std::list<int> dest);
 
             /**

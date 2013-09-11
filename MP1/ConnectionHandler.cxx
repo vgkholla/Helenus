@@ -21,7 +21,7 @@ using namespace std;
 using namespace P2P;
 
 ConnectionHandler::ConnectionHandler(int src,
-                                     std::string filename,
+                                     int machineno,
                                      std::list<int> dest)
 {
     int host_port= src;
@@ -37,7 +37,8 @@ ConnectionHandler::ConnectionHandler(int src,
     sockaddr_in sadr;
     pthread_t thread_id=0;
 
-    filepath = filename;
+    machine_no = machineno;
+    cout << "Machine No. " << machine_no << std::endl;
     for (std::list<int>::iterator it = dest.begin(); it != dest.end(); it++)
         peers[*it] = "unconnected";
 
@@ -134,18 +135,17 @@ void* ConnectionHandler::SocketHandler(void* lp)
     peerOrClient = msg.substr(0,pos);
     command = msg.substr(pos+1,msg.length() - pos);
 
-    filept = CommandLineTools::tagAndExecuteCmd(2,command,details);
+    filept = CommandLineTools::tagAndExecuteCmd(ptr1->machine_no,command,details);
 
     cout << "peer or client " << peerOrClient << "Command " << command <<  "file path " << filept <<std::endl;
     printf("Received bytes %d\nReceived string \"%s\"\n", bytecount, buffer);
-    cout << "file nameeeeeeeeeee" << ptr1->filepath.c_str();
     if (peerOrClient == "peer") {
         strcat(buffer, " SERVER ECHO TIAGI");
         printf("\n got Connection from a peer, sending back data");
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 //        char* fs_name = "/tmp/house.jpg";
-        char* fs_name = ptr1->filepath.c_str();
+        char* fs_name = filept.c_str();
         char sdbuf[512];
         FILE *fs = fopen(fs_name, "r");
         if(fs == NULL)
@@ -180,6 +180,7 @@ void* ConnectionHandler::SocketHandler(void* lp)
         for(t=0; t < thread_cnt; t++)
         {
             printf("\nOpening connectionn to peers socket fd ");
+            ptr->cmd = command;
             pthread_create(&thread_id[t],&attr,&ConnectionHandler::ClientHandler,(void*)ptr );
         }
         pthread_attr_destroy(&attr);
@@ -211,7 +212,8 @@ void* ConnectionHandler::ClientHandler(void* lp)
 {
     int host_port;
     char* host_name="127.0.0.1";
-    mystruct *ptr = (mystruct*)lp;
+    //mystruct *ptr = (mystruct*)lp;
+    mystruct *ptr = static_cast<mystruct*>(lp);
     ConnectionHandler *ptr1 = (ConnectionHandler*)ptr->owner;
 
     struct sockaddr_in my_addr;
@@ -271,7 +273,8 @@ void* ConnectionHandler::ClientHandler(void* lp)
 
     memset(buffer1, '\0', buffer_len1);
 
-    memcpy(buffer1,"peer",4);
+    memcpy(buffer1,"peer@",5);
+    strcat(buffer1,ptr->cmd.c_str());
     buffer1[strlen(buffer1)]='\0';
 
     if( (bytecount1=send(hsock, buffer1, strlen(buffer1),0))== -1){
@@ -284,7 +287,13 @@ void* ConnectionHandler::ClientHandler(void* lp)
 //        goto FINISH;
 //    }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-    char* fr_name = "/home/alok/project/build/house1.jpg";
+    std::ostringstream oss;
+    string filename;
+    filename = "machine.";
+    oss << host_port;
+    filename += oss.str();
+    filename += ".log";
+    char* fr_name = filename.c_str();
     FILE *fr = fopen(fr_name, "a");
     if(fr == NULL)
         printf("File %s Cannot be opened file on server.\n", fr_name);
