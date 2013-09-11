@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <list>
+#include "headers/clt.h"
 
 #include "ConnectionHandler.h"
 using namespace std;
@@ -106,6 +107,11 @@ void* ConnectionHandler::SocketHandler(void* lp)
 
     char buffer[1024];
     int buffer_len = 1024;
+    string msg;
+    string peerOrClient;
+    string command;
+    std::size_t pos;
+
     int bytecount;
     int thread_cnt = ptr1->peers.size();
     pthread_t thread_id[thread_cnt];
@@ -113,15 +119,27 @@ void* ConnectionHandler::SocketHandler(void* lp)
     void* status;
     int rc;
     long t;
+    string filept;
+
+    CommandResultDetails *details = new CommandResultDetails();
 
     memset(buffer, 0, buffer_len);
     if((bytecount = recv(*ptr->sock, buffer, buffer_len, 0))== -1){
         fprintf(stderr, "Error receiving data %s\n", strerror(errno));
         goto FINISH;
     }
+    
+    msg = buffer;
+    pos = msg.find("@");
+    peerOrClient = msg.substr(0,pos);
+    command = msg.substr(pos+1,msg.length() - pos);
+
+    filept = CommandLineTools::tagAndExecuteCmd(2,command,details);
+
+    cout << "peer or client " << peerOrClient << "Command " << command <<  "file path " << filept <<std::endl;
     printf("Received bytes %d\nReceived string \"%s\"\n", bytecount, buffer);
     cout << "file nameeeeeeeeeee" << ptr1->filepath.c_str();
-    if (memcmp(buffer,"peer",4)==0) {
+    if (peerOrClient == "peer") {
         strcat(buffer, " SERVER ECHO TIAGI");
         printf("\n got Connection from a peer, sending back data");
 
