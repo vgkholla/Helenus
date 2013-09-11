@@ -121,6 +121,7 @@ void* ConnectionHandler::SocketHandler(void* lp)
     int rc;
     long t;
     string filept;
+    string filenames[thread_cnt];
 
     CommandResultDetails *details = new CommandResultDetails();
 
@@ -135,9 +136,7 @@ void* ConnectionHandler::SocketHandler(void* lp)
     peerOrClient = msg.substr(0,pos);
     command = msg.substr(pos+1,msg.length() - pos);
 
-    filept = CommandLineTools::tagAndExecuteCmd(ptr1->machine_no,command,details);
-
-    cout << "peer or client " << peerOrClient << "Command " << command <<  "file path " << filept <<std::endl;
+    cout << "peer or client " << peerOrClient << "Command " << command << std::endl;
     printf("Received bytes %d\nReceived string \"%s\"\n", bytecount, buffer);
     if (peerOrClient == "peer") {
         strcat(buffer, " SERVER ECHO TIAGI");
@@ -191,7 +190,35 @@ void* ConnectionHandler::SocketHandler(void* lp)
                 exit(-1);
             }
         }
- 
+        cout << "AIEEEEEEEEEE threads returned" << std::endl; 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        t = 0;
+        for(map<int,string >::const_iterator it = ptr1->peers.begin();
+            it != ptr1->peers.end(); ++it)
+        {
+            if(it->second == "connected")
+            {
+                std::ostringstream oss;
+                oss << it->first;
+                filenames[t] = "machine.";
+                filenames[t] += oss.str();
+                filenames[t] += ".log";
+                t++;
+            }
+        }
+        
+	details->reset();
+        cout << "AIEEEEEEEEEE threads returned 1 " << ptr1->machine_no << " : " << command << std::endl; 
+	filenames[t] = CommandLineTools::tagAndExecuteCmd(ptr1->machine_no, command, details);
+        t++;
+        cout << "AIEEEEEEEEEE threads returned 2" << std::endl; 
+        details->reset();	
+        filept = CommandLineTools::mergeFileOutputs(filenames,t,details,0);
+        cout << "File names ------" << filept << " count " << t << std::endl;
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
 
         if((bytecount = send(*ptr->sock, ptr1->data.c_str(), strlen(ptr1->data.c_str()), 0))== -1){
             fprintf(stderr, "Error sending data %d\n", errno);
