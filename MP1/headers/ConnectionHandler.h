@@ -27,7 +27,7 @@ namespace P2P
         public:
             int machine_no;
 
-            std::map<int,std::string> peers;
+            std::map<std::string,std::string> peers;
 
             std::string data;
 
@@ -36,9 +36,9 @@ namespace P2P
              *
              * @param owner  Owner.
              */
-            explicit ConnectionHandler(int src,
+            explicit ConnectionHandler(string src,
                                        int machineno,
-                                       std::list<int> dest);
+                                       std::list<string> dest);
 
             /**
              * Distructor.

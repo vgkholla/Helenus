@@ -20,6 +20,7 @@ int main(){
     struct sockaddr_in my_addr;
 
     char buffer[1024];
+    char revbuf[512];
     int bytecount;
     int buffer_len=0;
 
@@ -76,11 +77,51 @@ int main(){
     }
     printf("Sent bytes %d\n", bytecount);
 
-    if((bytecount = recv(hsock, buffer, buffer_len, 0))== -1){
-        fprintf(stderr, "Error receiving data %d\n", errno);
-        exit(1);
+
+
+
+
+
+
+
+    string filename;
+    filename = "FinalOutput";
+    const char* fr_name = filename.c_str();
+    FILE *fr = fopen(fr_name, "a");
+    if(fr == NULL)
+        printf("File %s Cannot be opened file on server.\n", fr_name);
+    else
+    {
+        bzero(revbuf, 512);
+        int fr_block_sz = 0;
+        while((fr_block_sz = recv(hsock, revbuf, 512, 0)) > 0)
+        {
+            int write_sz = fwrite(revbuf, sizeof(char), fr_block_sz, fr);
+            if(write_sz < fr_block_sz)
+            {
+                printf("File write failed on server.\n");
+            }
+            bzero(revbuf, 512);
+            if (fr_block_sz == 0 || fr_block_sz != 512)
+            {
+                break;
+            }
+        }
+        if(fr_block_sz < 0)
+        {
+            if (errno == EAGAIN)
+            {
+                printf("recv() timed out.\n");
+            }
+            else
+            {
+                fprintf(stderr, "recv() failed due to errno = %d\n", errno);
+                exit(1);
+            }
+        }
+        printf("Ok received from client!\n");
+        fclose(fr);
     }
-    printf("Recieved bytes %d\nReceived string \"%s\"\n", bytecount, buffer);
 
     close(hsock);
 }

@@ -20,11 +20,10 @@
 using namespace std;
 using namespace P2P;
 
-ConnectionHandler::ConnectionHandler(int src,
+ConnectionHandler::ConnectionHandler(string src,
                                      int machineno,
-                                     std::list<int> dest)
+                                     std::list<string> dest)
 {
-    int host_port= src;
     struct sockaddr_in my_addr;
     mystruct* f = new mystruct;
 
@@ -36,13 +35,20 @@ ConnectionHandler::ConnectionHandler(int src,
     int* csock;
     sockaddr_in sadr;
     pthread_t thread_id=0;
+    string address;
+    string port;
+    std::size_t pos;
+
+    pos = src.find(":");
+    address = src.substr(0,pos);
+    port = src.substr(pos+1,src.length() - pos);
 
     machine_no = machineno;
-    cout << "Machine No. " << machine_no << std::endl;
-    for (std::list<int>::iterator it = dest.begin(); it != dest.end(); it++)
+    cout << "Machine No. " << machine_no << " Address" << address << " Port " << port << std::endl;
+    for (std::list<string>::iterator it = dest.begin(); it != dest.end(); it++)
         peers[*it] = "unconnected";
 
-    for(std::map<int,string>::const_iterator it = peers.begin();
+    for(std::map<string,string>::const_iterator it = peers.begin();
         it != peers.end(); ++it)
     {
         std::cout << it->first << " " << it->second << "\n";
@@ -66,10 +72,10 @@ ConnectionHandler::ConnectionHandler(int src,
     free(p_int);
 
     my_addr.sin_family = AF_INET ;
-    my_addr.sin_port = htons(host_port);
+    my_addr.sin_port = htons(atoi(port.c_str()));
     
     memset(&(my_addr.sin_zero), 0, 8);
-    my_addr.sin_addr.s_addr = INADDR_ANY ;
+    my_addr.sin_addr.s_addr = inet_addr(address.c_str());;
     
     if( bind( hsock, (sockaddr*)&my_addr, sizeof(my_addr)) == -1 ){
         fprintf(stderr,"Error binding to socket, make sure nothing else is listening on this port %d\n",errno);
@@ -83,7 +89,7 @@ ConnectionHandler::ConnectionHandler(int src,
     addr_size = sizeof(sockaddr_in);
         
     while(true){
-        printf("waiting for a connection on port %d\n",host_port);
+        printf("waiting for a connection on port %d\n",atoi(port.c_str()));
         csock = (int*)malloc(sizeof(int));
         if((*csock = accept( hsock, (sockaddr*)&sadr, &addr_size))!= -1){
             f->sock = csock;
@@ -121,7 +127,7 @@ void* ConnectionHandler::SocketHandler(void* lp)
     int rc;
     long t;
     string filept;
-    string filenames[thread_cnt];
+    string filenames[thread_cnt+1];
 
     CommandResultDetails *details = new CommandResultDetails();
 
@@ -138,12 +144,12 @@ void* ConnectionHandler::SocketHandler(void* lp)
 
     cout << "peer or client " << peerOrClient << "Command " << command << std::endl;
     printf("Received bytes %d\nReceived string \"%s\"\n", bytecount, buffer);
-    if (peerOrClient == "peer") {
+
+    if (peerOrClient == "peer") 
+    {
         strcat(buffer, " SERVER ECHO TIAGI");
         printf("\n got Connection from a peer, sending back data");
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
-//        char* fs_name = "/tmp/house.jpg";
+        filept = CommandLineTools::tagAndExecuteCmd(ptr1->machine_no, command, details);
         char* fs_name = filept.c_str();
         char sdbuf[512];
         FILE *fs = fopen(fs_name, "r");
@@ -165,15 +171,9 @@ void* ConnectionHandler::SocketHandler(void* lp)
             bzero(sdbuf, 512);
         }
         printf("Ok File %s from Client was Sent!\n", fs_name);
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        //if((bytecount = send(*ptr->sock, buffer, strlen(buffer), 0))== -1){
-        //    fprintf(stderr, "Error sending data %d\n", errno);
-        //    goto FINISH;
-        //}
-        //printf("Sent bytes %d\n", bytecount);
     }
-    else {
+    else 
+    {
         pthread_attr_init(&attr);
         pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
         for(t=0; t < thread_cnt; t++)
@@ -190,41 +190,51 @@ void* ConnectionHandler::SocketHandler(void* lp)
                 exit(-1);
             }
         }
-        cout << "AIEEEEEEEEEE threads returned" << std::endl; 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         t = 0;
-        for(map<int,string >::const_iterator it = ptr1->peers.begin();
+        for(map<string,string >::const_iterator it = ptr1->peers.begin();
             it != ptr1->peers.end(); ++it)
         {
             if(it->second == "connected")
             {
-                std::ostringstream oss;
-                oss << it->first;
                 filenames[t] = "machine.";
-                filenames[t] += oss.str();
+                filenames[t] += it->first;
                 filenames[t] += ".log";
                 t++;
             }
         }
         
 	details->reset();
-        cout << "AIEEEEEEEEEE threads returned 1 " << ptr1->machine_no << " : " << command << std::endl; 
 	filenames[t] = CommandLineTools::tagAndExecuteCmd(ptr1->machine_no, command, details);
         t++;
-        cout << "AIEEEEEEEEEE threads returned 2" << std::endl; 
         details->reset();	
         filept = CommandLineTools::mergeFileOutputs(filenames,t,details,0);
         cout << "File names ------" << filept << " count " << t << std::endl;
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-
-        if((bytecount = send(*ptr->sock, ptr1->data.c_str(), strlen(ptr1->data.c_str()), 0))== -1){
-            fprintf(stderr, "Error sending data %d\n", errno);
-            goto FINISH;
+        char* fs_name = filept.c_str();
+        char sdbuf[512];
+        FILE *fs = fopen(fs_name, "r");
+        if(fs == NULL)
+        {
+            printf("ERROR: File %s not found.\n", fs_name);
+            exit(1);
         }
-        printf("Sent bytes %d\n", bytecount);
+
+        bzero(sdbuf, 512);
+        int fs_block_sz;
+        while((fs_block_sz = fread(sdbuf, sizeof(char), 512, fs)) > 0)
+        {
+            if(send(*ptr->sock, sdbuf, fs_block_sz, 0) < 0)
+            {
+                fprintf(stderr, "ERROR: Failed to send file %s. (errno = %d)\n", fs_name, errno);
+                break;
+            }
+            bzero(sdbuf, 512);
+        }
+        printf("Ok File %s from Peer ------> Client was Sent!\n", fs_name);
 
     }
 
@@ -238,8 +248,7 @@ FINISH:
 void* ConnectionHandler::ClientHandler(void* lp)
 {
     int host_port;
-    char* host_name="127.0.0.1";
-    //mystruct *ptr = (mystruct*)lp;
+    string host_name;
     mystruct *ptr = static_cast<mystruct*>(lp);
     ConnectionHandler *ptr1 = (ConnectionHandler*)ptr->owner;
 
@@ -254,13 +263,17 @@ void* ConnectionHandler::ClientHandler(void* lp)
     int * p_int;
     int err;
     pthread_t thread_id=0;
+    std::size_t pos;
 
-    for(map<int,string >::const_iterator it = ptr1->peers.begin();
+    for(map<string,string >::const_iterator it = ptr1->peers.begin();
         it != ptr1->peers.end(); ++it)
     {
         if(it->second == "unconnected")
         {
-            host_port = it->first;
+            cout << "AIEEEEEEE host " << it->first << std::endl;
+            pos = it->first.find(":");
+            host_name = it->first.substr(0,pos);
+            host_port = atoi((it->first.substr(pos+1,it->first.length() - pos)).c_str());
             it->second = "connected";
             break;
         }
@@ -287,7 +300,7 @@ void* ConnectionHandler::ClientHandler(void* lp)
     my_addr.sin_port = htons(host_port);
 
     memset(&(my_addr.sin_zero), 0, 8);
-    my_addr.sin_addr.s_addr = inet_addr(host_name);
+    my_addr.sin_addr.s_addr = inet_addr(host_name.c_str());
 
     if( connect( hsock, (struct sockaddr*)&my_addr, sizeof(my_addr)) == -1 ){
         if((err = errno) != EINPROGRESS){
@@ -309,17 +322,16 @@ void* ConnectionHandler::ClientHandler(void* lp)
         //goto FINISH;
     }
 
-//    if((bytecount1 = recv(hsock, buffer1, buffer_len1, 0))== -1){
-//        fprintf(stderr, "Error receiving data %d\n", errno);
-//        goto FINISH;
-//    }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
     std::ostringstream oss;
     string filename;
     filename = "machine.";
+    filename += host_name;
+    filename += ":";
     oss << host_port;
     filename += oss.str();
     filename += ".log";
+    cout << "AIEEEEEEEEEEE " << filename << " host" << host_name << std::endl;
     char* fr_name = filename.c_str();
     FILE *fr = fopen(fr_name, "a");
     if(fr == NULL)
@@ -356,9 +368,6 @@ void* ConnectionHandler::ClientHandler(void* lp)
         printf("Ok received from client!\n");
         fclose(fr);
     }
-///////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//    ptr1->data.append(buffer1);
     close(hsock);
     pthread_exit(NULL);
 
