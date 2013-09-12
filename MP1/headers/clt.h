@@ -20,7 +20,7 @@ using namespace std;
 #define PROMPT ">>"
 #define O_FILE_NAME_PREFIX "cmd."
 #define O_FILE_NAME_SUFFIX ".out"
-#define OUTPUT_FILE_BASE_PATH "/tmp/"
+#define OUTPUT_FILE_BASE_PATH "/tmp/ag/"
 
 class CommandResultDetails{
 

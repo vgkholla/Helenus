@@ -20,7 +20,7 @@ using namespace std;
 #define LOG_NAME_SUFFIX ".log"
 #define KEY_VALUE_SEPERATOR ":"
 #define TIMESTAMP_MSG_SEPERATOR "-"
-#define LOG_FILE_BASE_PATH "/tmp/"
+#define LOG_FILE_BASE_PATH "/tmp/ag/"
 
 class LogFileCreationDetails {
 	

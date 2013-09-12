@@ -67,7 +67,7 @@ class Actions {
 		
 		//since we are storing all our files in /tmp, we can send that over and store it in the same path in the peer
 		string remoteFilePath = outputFilePath;
-		remoteFilePath = "/tmp/scped.out";
+		remoteFilePath = "/tmp/ag/scped.out";
 
 		//reset the details object
 		details->reset();

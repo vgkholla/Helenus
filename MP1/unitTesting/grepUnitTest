@@ -2,7 +2,7 @@
 
 #parameters
 NO_OF_MACHINES=4
-LOG_BASE_LOCATION=/tmp/
+LOG_BASE_LOCATION=/tmp/ag/
 LOG_PREFIX=machine.
 LOG_SUFFIX=.log
 
@@ -41,12 +41,12 @@ done
 #the grep command we are going to run
 GREP_COMMAND="grep key1.*: | grep :.*va.*1"
 
-#run the client and server here and get the result. (which i'm expecting to be at /tmp/cmdMergedOutput.out)
+#run the client and server here and get the result. (which i'm expecting to be at /tmp/ag/cmdMergedOutput.out)
 
 
 #now check the output
-EXPECTED_OUTPUT_FILE=/tmp/expectedOutput.out
-ACTUAL_OUTPUT_FILE=/tmp/cmdMergedOutput.out
+EXPECTED_OUTPUT_FILE=$LOG_BASE_LOCATIONexpectedOutput.out
+ACTUAL_OUTPUT_FILE=$LOG_BASE_LOCATIONcmdMergedOutput.out
 SORTED_SUFFIX=.sorted
 OUTPUT_LINE_GREP_EXPRESSION="Output of command from machine"
 
