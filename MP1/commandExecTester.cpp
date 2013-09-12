@@ -73,13 +73,13 @@ int main() {
 
 	//do any string manipulation on command here
 
-	//testMerge(cmd);
+	testMerge(cmd);
 	
 	//testScp(cmd);
 	
 	//testStreamOutput(cmd);
 	
-	testParse(cmd);
+	//testParse(cmd);
 
 	return 0;
 }

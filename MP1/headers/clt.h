@@ -77,6 +77,12 @@ class CommandLineTools {
 		return cmd;
 	}
 
+	/**
+	 * [parses the grep command and gives a file name to grep from]
+	 * @param  machineID [the machine ID]
+	 * @param  cmd       [the command]
+	 * @return           [the concatenated command]
+	 */
 	static string parseGrepCmd(int machineID, string cmd) {
 		//if not grep return
 		if(cmd.find("grep") == string::npos) {
