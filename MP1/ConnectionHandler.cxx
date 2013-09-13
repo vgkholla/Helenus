@@ -15,8 +15,11 @@
 #include <pthread.h>
 #include <list>
 #include "headers/clt.h"
+#include <sys/stat.h>
 
 #include "ConnectionHandler.h"
+
+#define SIZE 1024
 using namespace std;
 using namespace P2P;
 
@@ -128,6 +131,7 @@ void* ConnectionHandler::SocketHandler(void* lp)
     long t;
     string filept;
     string filenames[thread_cnt+1];
+    struct stat filestat;
 
     CommandResultDetails *details = new CommandResultDetails();
 
@@ -151,7 +155,13 @@ void* ConnectionHandler::SocketHandler(void* lp)
         printf("\n got Connection from a peer, sending back data");
         filept = CommandLineTools::tagAndExecuteCmd(ptr1->machine_no, command, details);
         char* fs_name = filept.c_str();
-        char sdbuf[512];
+        char sdbuf[SIZE];
+        std::ostringstream oss;
+        string filesize;
+        int sentsize;
+        stat(fs_name, &filestat);
+        cout << "FILE SIZE FOUND =  " << filestat.st_size << std::endl;
+        
         FILE *fs = fopen(fs_name, "r");
         if(fs == NULL)
         {
@@ -159,18 +169,30 @@ void* ConnectionHandler::SocketHandler(void* lp)
             exit(1);
         }
 
-        bzero(sdbuf, 512);
+        bzero(sdbuf, SIZE);
         int fs_block_sz;
-        while((fs_block_sz = fread(sdbuf, sizeof(char), 512, fs)) > 0)
+        oss << filestat.st_size;
+        filesize = oss.str();
+ 
+        if(send(*ptr->sock, filesize.c_str(), filesize.length(), 0) < 0)
+        {
+            fprintf(stderr, "ERROR: Failed to send size of file %s. (errno = %s)\n", fs_name, strerror(errno));
+            exit(1);
+        }
+
+        while((fs_block_sz = fread(sdbuf, sizeof(char), SIZE, fs)) > 0)
         {
             if(send(*ptr->sock, sdbuf, fs_block_sz, 0) < 0)
             {
-                fprintf(stderr, "ERROR: Failed to send file %s. (errno = %d)\n", fs_name, errno);
-                break;
+                fprintf(stderr, "ERROR: Failed from peer to send file %s. (errno = %s)\n", fs_name, strerror(errno));
+                exit(1);
             }
-            bzero(sdbuf, 512);
+            bzero(sdbuf, SIZE);
+            sentsize += fs_block_sz;
+            cout << "FILE SENDING--- SIZE " << sentsize << "SENDIN SIZE " << fs_block_sz << std::endl;
         }
         printf("Ok File %s from Client was Sent!\n", fs_name);
+        close(*ptr->sock);
     }
     else 
     {
@@ -215,7 +237,7 @@ void* ConnectionHandler::SocketHandler(void* lp)
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         char* fs_name = filept.c_str();
-        char sdbuf[512];
+        char sdbuf[SIZE];
         FILE *fs = fopen(fs_name, "r");
         if(fs == NULL)
         {
@@ -223,16 +245,16 @@ void* ConnectionHandler::SocketHandler(void* lp)
             exit(1);
         }
 
-        bzero(sdbuf, 512);
+        bzero(sdbuf, SIZE);
         int fs_block_sz;
-        while((fs_block_sz = fread(sdbuf, sizeof(char), 512, fs)) > 0)
+        while((fs_block_sz = fread(sdbuf, sizeof(char), SIZE, fs)) > 0)
         {
             if(send(*ptr->sock, sdbuf, fs_block_sz, 0) < 0)
             {
-                fprintf(stderr, "ERROR: Failed to send file %s. (errno = %d)\n", fs_name, errno);
-                break;
+                fprintf(stderr, "ERROR: Failed to send final file %s. (errno = %s)\n", fs_name, strerror(errno));
+                exit(1);
             }
-            bzero(sdbuf, 512);
+            bzero(sdbuf, SIZE);
         }
         printf("Ok File %s from Peer ------> Client was Sent!\n", fs_name);
 
@@ -255,7 +277,7 @@ void* ConnectionHandler::ClientHandler(void* lp)
     struct sockaddr_in my_addr;
 
     char buffer1[1024];
-    char revbuf[512];
+    char revbuf[SIZE];
     int bytecount1;
     int buffer_len1=0;
 
@@ -338,17 +360,32 @@ void* ConnectionHandler::ClientHandler(void* lp)
         printf("File %s Cannot be opened file on server.\n", fr_name);
     else
     {
-        bzero(revbuf, 512);
+        bzero(revbuf, SIZE);
         int fr_block_sz = 0;
-        while((fr_block_sz = recv(hsock, revbuf, 512, 0)) > 0)
+        string size;
+        int count;
+        int filesize;
+        int rcv_filesize;
+        if((count = recv(hsock, size.c_str(), SIZE, 0))== -1){
+            fprintf(stderr, "Error receiving file size %s\n", strerror(errno));
+            goto FINISH;
+        }
+        filesize = atoi(size.c_str());
+        cout << "FILE SIZE RETURNED " << filesize << std::endl;
+ 
+        
+        while((fr_block_sz = recv(hsock, revbuf, SIZE, 0)) > 0)
         {
-            int write_sz = fwrite(revbuf, sizeof(char), fr_block_sz, fr);
+            cout<<"Received " << fr_block_sz << std::endl;
+	    int write_sz = fwrite(revbuf, sizeof(char), fr_block_sz, fr);
             if(write_sz < fr_block_sz)
             {
                 printf("File write failed on server.\n");
             }
-            bzero(revbuf, 512);
-            if (fr_block_sz == 0 || fr_block_sz != 512)
+            bzero(revbuf, SIZE);
+            rcv_filesize += fr_block_sz;
+            cout << "FILE SIZE RECEIVED " << rcv_filesize << "ACTUAL SIZE " << filesize << std::endl;
+            if (rcv_filesize >= filesize)
             {
                 break;
             }

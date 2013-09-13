@@ -9,18 +9,19 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include "headers/clt.h"
+#define SIZE 128
 
 using namespace std;
 
 int main(){
 
-    int host_port= 45456;
-    string host_name="127.0.0.1";
+    int host_port= 45000;
+    string host_name="192.17.11.18";
 
     struct sockaddr_in my_addr;
 
     char buffer[1024];
-    char revbuf[512];
+    char revbuf[SIZE];
     int bytecount;
     int buffer_len=0;
 
@@ -92,17 +93,17 @@ int main(){
         printf("File %s Cannot be opened file on server.\n", fr_name);
     else
     {
-        bzero(revbuf, 512);
+        bzero(revbuf, SIZE);
         int fr_block_sz = 0;
-        while((fr_block_sz = recv(hsock, revbuf, 512, 0)) > 0)
+        while((fr_block_sz = recv(hsock, revbuf, SIZE, 0)) > 0)
         {
             int write_sz = fwrite(revbuf, sizeof(char), fr_block_sz, fr);
             if(write_sz < fr_block_sz)
             {
                 printf("File write failed on server.\n");
             }
-            bzero(revbuf, 512);
-            if (fr_block_sz == 0 || fr_block_sz != 512)
+            bzero(revbuf, SIZE);
+            if (fr_block_sz == 0 || fr_block_sz != SIZE)
             {
                 break;
             }
