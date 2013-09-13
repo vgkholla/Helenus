@@ -202,8 +202,8 @@ void* ConnectionHandler::SocketHandler(void* lp)
         pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
         for(t=0; t < thread_cnt; t++)
         {
-            printf("\nOpening connectionn to peers socket fd ");
             ptr->cmd = command;
+            cout << "Thread created for machine " << t << std::endl;
             pthread_create(&thread_id[t],&attr,&ConnectionHandler::ClientHandler,(void*)ptr );
         }
         pthread_attr_destroy(&attr);
@@ -294,7 +294,7 @@ void* ConnectionHandler::ClientHandler(void* lp)
     {
         if(it->second == "unconnected")
         {
-            cout << "AIEEEEEEE host " << it->first << std::endl;
+            cout << "Opening connection to -------- " << it->first << std::endl;
             pos = it->first.find(":");
             host_name = it->first.substr(0,pos);
             host_port = atoi((it->first.substr(pos+1,it->first.length() - pos)).c_str());
