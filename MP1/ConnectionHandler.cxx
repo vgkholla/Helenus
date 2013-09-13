@@ -153,7 +153,9 @@ void* ConnectionHandler::SocketHandler(void* lp)
     {
         strcat(buffer, " SERVER ECHO TIAGI");
         printf("\n got Connection from a peer, sending back data");
-        filept = CommandLineTools::tagAndExecuteCmd(ptr1->machine_no, command, details);
+        command = CommandLineTools::parseGrepCmd(ptr1->machine_no, command);
+	details->reset();
+	filept = CommandLineTools::tagAndExecuteCmd(ptr1->machine_no, command, details);
         char* fs_name = filept.c_str();
         char sdbuf[SIZE];
         std::ostringstream oss;
