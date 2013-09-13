@@ -160,7 +160,7 @@ void* ConnectionHandler::SocketHandler(void* lp)
         char sdbuf[SIZE];
         std::ostringstream oss;
         string filesize;
-        int sentsize;
+        int sentsize =0;
         stat(fs_name, &filestat);
         cout << "FILE SIZE FOUND =  " << filestat.st_size << std::endl;
         
@@ -191,7 +191,7 @@ void* ConnectionHandler::SocketHandler(void* lp)
             }
             bzero(sdbuf, SIZE);
             sentsize += fs_block_sz;
-            cout << "FILE SENDING--- SIZE " << sentsize << "SENDIN SIZE " << fs_block_sz << std::endl;
+            //cout << "FILE SENDING--- SIZE " << sentsize << "SENDIN SIZE " << fs_block_sz << std::endl;
         }
         printf("Ok File %s from Client was Sent!\n", fs_name);
         close(*ptr->sock);
@@ -200,12 +200,31 @@ void* ConnectionHandler::SocketHandler(void* lp)
     {
         pthread_attr_init(&attr);
         pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+/*
         for(t=0; t < thread_cnt; t++)
         {
             ptr->cmd = command;
             cout << "Thread created for machine " << t << std::endl;
             pthread_create(&thread_id[t],&attr,&ConnectionHandler::ClientHandler,(void*)ptr );
         }
+*/
+        t = 0;
+        for(map<string,string >::const_iterator it = ptr1->peers.begin();
+            it != ptr1->peers.end(); ++it)
+        {
+            mystruct *ptrToSend = new mystruct;
+            ptrToSend->owner = ptr->owner;
+            ptrToSend->cmd = command;
+            ptrToSend->hostAndPort = it->first;
+            ptrToSend->sock = ptr->sock;
+            it->second = "connected";
+            cout << "Thread created for machine " << it->first << "Host and port is "<<ptrToSend->hostAndPort<<std::endl;
+            pthread_create(&thread_id[t],&attr,&ConnectionHandler::ClientHandler,(void*)ptrToSend );
+            t++;
+            //delete ptrToSend;
+            cout<<"Finished processing: " <<it->first<<endl;
+	}
+
         pthread_attr_destroy(&attr);
         for(t=0; t< thread_cnt; t++) {
             rc = pthread_join(thread_id[t], &status);
@@ -230,6 +249,8 @@ void* ConnectionHandler::SocketHandler(void* lp)
         }
         
 	details->reset();
+        command = CommandLineTools::parseGrepCmd(ptr1->machine_no, command);
+        details->reset();
 	filenames[t] = CommandLineTools::tagAndExecuteCmd(ptr1->machine_no, command, details);
         t++;
         details->reset();	
@@ -273,8 +294,9 @@ void* ConnectionHandler::ClientHandler(void* lp)
 {
     int host_port;
     string host_name;
-    mystruct *ptr = static_cast<mystruct*>(lp);
-    ConnectionHandler *ptr1 = (ConnectionHandler*)ptr->owner;
+    mystruct *ptrc = static_cast<mystruct*>(lp);
+    string hostAndPort = ptrc->hostAndPort;
+    //ConnectionHandler *ptr1 = (ConnectionHandler*)ptrc->owner;
 
     struct sockaddr_in my_addr;
 
@@ -288,7 +310,7 @@ void* ConnectionHandler::ClientHandler(void* lp)
     int err;
     pthread_t thread_id=0;
     std::size_t pos;
-
+/*
     for(map<string,string >::const_iterator it = ptr1->peers.begin();
         it != ptr1->peers.end(); ++it)
     {
@@ -302,6 +324,12 @@ void* ConnectionHandler::ClientHandler(void* lp)
             break;
         }
     }
+*/
+//    cout << "AIEEEEEEEEE going to crash" << endl; 
+    cout << "In the thread host and port " << hostAndPort; 
+    pos = hostAndPort.find(":");
+    host_name = hostAndPort.substr(0,pos);
+    host_port = atoi((hostAndPort.substr(pos+1,hostAndPort.length() - pos)).c_str());
 
     hsock = socket(AF_INET, SOCK_STREAM, 0);
     if(hsock == -1){
@@ -338,7 +366,7 @@ void* ConnectionHandler::ClientHandler(void* lp)
     memset(buffer1, '\0', buffer_len1);
 
     memcpy(buffer1,"peer@",5);
-    strcat(buffer1,ptr->cmd.c_str());
+    strcat(buffer1,ptrc->cmd.c_str());
     buffer1[strlen(buffer1)]='\0';
 
     if( (bytecount1=send(hsock, buffer1, strlen(buffer1),0))== -1){
@@ -355,7 +383,7 @@ void* ConnectionHandler::ClientHandler(void* lp)
     oss << host_port;
     filename += oss.str();
     filename += ".log";
-    cout << "AIEEEEEEEEEEE " << filename << " host" << host_name << std::endl;
+//    cout << "AIEEEEEEEEEEE " << filename << " host" << host_name << std::endl;
     char* fr_name = filename.c_str();
     FILE *fr = fopen(fr_name, "a");
     if(fr == NULL)
@@ -367,31 +395,39 @@ void* ConnectionHandler::ClientHandler(void* lp)
         string size;
         int count;
         int filesize;
-        int rcv_filesize;
+        int rcv_filesize = 0;
         if((count = recv(hsock, size.c_str(), SIZE, 0))== -1){
             fprintf(stderr, "Error receiving file size %s\n", strerror(errno));
             goto FINISH;
         }
         filesize = atoi(size.c_str());
-        cout << "FILE SIZE RETURNED " << filesize << std::endl;
- 
-        
-        while((fr_block_sz = recv(hsock, revbuf, SIZE, 0)) > 0)
+        int write_sz = fwrite(size.c_str(), sizeof(char), count, fr);
+        if(write_sz < fr_block_sz)
         {
-            cout<<"Received " << fr_block_sz << std::endl;
-	    int write_sz = fwrite(revbuf, sizeof(char), fr_block_sz, fr);
+            printf("File write failed on server.\n");
+        }
+        rcv_filesize += fr_block_sz;
+        bzero(revbuf, SIZE);
+
+        cout << "FILE SIZE RETURNED " << filesize << "SOCKET NO" << hsock << std::endl;
+           
+        while((fr_block_sz = recv(hsock, revbuf, SIZE, 0)) >  0)
+        {
+            //cout<<"Received " << fr_block_sz << std::endl;
+	    write_sz = fwrite(revbuf, sizeof(char), fr_block_sz, fr);
             if(write_sz < fr_block_sz)
             {
                 printf("File write failed on server.\n");
             }
             bzero(revbuf, SIZE);
             rcv_filesize += fr_block_sz;
-            cout << "FILE SIZE RECEIVED " << rcv_filesize << "ACTUAL SIZE " << filesize << std::endl;
+            //cout << "FILE SIZE RECEIVED " << rcv_filesize << "ACTUAL SIZE " << filesize << std::endl;
             if (rcv_filesize >= filesize)
             {
                 break;
             }
         }
+        cout << "FR BLOCK SZ = " << fr_block_sz << endl;
         if(fr_block_sz < 0)
         {
             if (errno == EAGAIN)

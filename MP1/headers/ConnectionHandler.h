@@ -16,6 +16,7 @@ namespace P2P
         int *sock;
         void* owner;
         string cmd;
+        string hostAndPort;
     } mystruct;
 
     class ConnectionHandler
