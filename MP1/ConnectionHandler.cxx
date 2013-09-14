@@ -49,6 +49,8 @@ ConnectionHandler::ConnectionHandler(string src,
 
     machine_no = machineno;
     cout << "Machine No. " << machine_no << " Address" << address << " Port " << port << std::endl;
+
+    /* Marking all clients as unconnected */
     for (std::list<string>::iterator it = dest.begin(); it != dest.end(); it++)
         peers[*it] = "unconnected";
 
@@ -58,9 +60,10 @@ ConnectionHandler::ConnectionHandler(string src,
         std::cout << it->first << " " << it->second << "\n";
     }
 
+    /* Opening socket and binding and listening to it */
     hsock = socket(AF_INET, SOCK_STREAM, 0);
     if(hsock == -1){
-        printf("Error initializing socket %d\n", errno);
+        cout << "Error opening socket " << strerror(errno) << endl;
         goto FINISH;
     }
     
@@ -69,7 +72,7 @@ ConnectionHandler::ConnectionHandler(string src,
         
     if( (setsockopt(hsock, SOL_SOCKET, SO_REUSEADDR, (char*)p_int, sizeof(int)) == -1 )||
         (setsockopt(hsock, SOL_SOCKET, SO_KEEPALIVE, (char*)p_int, sizeof(int)) == -1 ) ){
-        printf("Error setting options %d\n", errno);
+        cout << "Error setting socket options " << strerror(errno) << endl;
         free(p_int);
         goto FINISH;
     }
@@ -82,28 +85,30 @@ ConnectionHandler::ConnectionHandler(string src,
     my_addr.sin_addr.s_addr = inet_addr(address.c_str());;
     
     if( bind( hsock, (sockaddr*)&my_addr, sizeof(my_addr)) == -1 ){
-        fprintf(stderr,"Error binding to socket, make sure nothing else is listening on this port %d\n",errno);
+        cout << "Error binding to socket, make sure nothing else is listening on this port " << strerror(errno) << endl;
         goto FINISH;
     }
     if(listen( hsock, 10) == -1 ){
-        fprintf(stderr, "Error listening %d\n",errno);
+        cout << "Error listening on socket " << strerror(errno) << endl;
         goto FINISH;
     }
 
     addr_size = sizeof(sockaddr_in);
+
+    /* Accepting connections from clients */
         
     while(true){
-        printf("waiting for a connection on port %d\n",atoi(port.c_str()));
+        cout << "Waiting for a connection on port " << atoi(port.c_str()) << endl;
         csock = (int*)malloc(sizeof(int));
         if((*csock = accept( hsock, (sockaddr*)&sadr, &addr_size))!= -1){
             f->sock = csock;
             f->owner = this;
-            printf("---------------------\nReceived connection from %s at socket %d and %d address %p\n",inet_ntoa(sadr.sin_addr),*csock,*f->sock,&f);
+            cout << "Received connection from " <<  inet_ntoa(sadr.sin_addr) << endl;
             pthread_create(&thread_id,0,&ConnectionHandler::SocketHandler, (void*)f);
             pthread_detach(thread_id);
         }
         else{
-            fprintf(stderr, "Error accepting %s\n", strerror(errno));
+            cout << "Error accepting connection " << strerror(errno) << endl;
         }
     }
     
@@ -133,12 +138,17 @@ void* ConnectionHandler::SocketHandler(void* lp)
     string filept;
     string filenames[thread_cnt+1];
     struct stat filestat;
+    list<mystruct*> ptrList;
 
     CommandResultDetails *details = new CommandResultDetails();
 
+    /* Receive packet from the remote machine and find out 
+       if it is a peer or a client and the command send 
+       from the remote machine
+     */
     memset(buffer, 0, buffer_len);
     if((bytecount = recv(*ptr->sock, buffer, buffer_len, 0))== -1){
-        fprintf(stderr, "Error receiving data %s\n", strerror(errno));
+        cout << "Error receiving data " << strerror(errno) << endl;
         goto FINISH;
     }
     
@@ -147,13 +157,12 @@ void* ConnectionHandler::SocketHandler(void* lp)
     peerOrClient = msg.substr(0,pos);
     command = msg.substr(pos+1,msg.length() - pos);
 
-    cout << "peer or client " << peerOrClient << "Command " << command << std::endl;
-    printf("Received bytes %d\nReceived string \"%s\"\n", bytecount, buffer);
+    cout << "Got connection from: " << peerOrClient << " Command received: " << command << endl;
 
     if (peerOrClient == "peer") 
     {
         strcat(buffer, " SERVER ECHO TIAGI");
-        printf("\n got Connection from a peer, sending back data");
+        printf("\n Got Connection from a peer, sending back data");
         command = CommandLineTools::parseGrepCmd(ptr1->machine_no, command);
 	details->reset();
 	filept = CommandLineTools::tagAndExecuteCmd(ptr1->machine_no, command, details);
@@ -163,12 +172,12 @@ void* ConnectionHandler::SocketHandler(void* lp)
         string filesize;
         int sentsize =0;
         stat(fs_name, &filestat);
-        cout << "FILE SIZE FOUND =  " << filestat.st_size << std::endl;
+        cout << "File size to be sent " << filestat.st_size << endl;
         
         FILE *fs = fopen(fs_name, "r");
         if(fs == NULL)
         {
-            printf("ERROR: File %s not found.\n", fs_name);
+            cout << "ERROR: File " << fs_name << " not found." << endl;
             exit(1);
         }
 
@@ -179,7 +188,7 @@ void* ConnectionHandler::SocketHandler(void* lp)
  
         if(send(*ptr->sock, filesize.c_str(), filesize.length(), 0) < 0)
         {
-            fprintf(stderr, "ERROR: Failed to send size of file %s. (errno = %s)\n", fs_name, strerror(errno));
+            cout << "ERROR: Failed to send file size" << strerror(errno) << endl;
             exit(1);
         }
 
@@ -187,7 +196,7 @@ void* ConnectionHandler::SocketHandler(void* lp)
         {
             if(send(*ptr->sock, sdbuf, fs_block_sz, 0) < 0)
             {
-                fprintf(stderr, "ERROR: Failed from peer to send file %s. (errno = %s)\n", fs_name, strerror(errno));
+                cout << "ERROR: Failed to send file from peer " << strerror(errno) << endl;
                 exit(1);
             }
             bzero(sdbuf, SIZE);
@@ -199,7 +208,7 @@ void* ConnectionHandler::SocketHandler(void* lp)
             //fflush(stdout);
             //cout << "FILE SENDING--- SIZE " << sentsize << "SENDIN SIZE " << fs_block_sz << std::endl;
         }
-        printf("Ok File %s from Client was Sent!\n", fs_name);
+        cout << "File sent to the peer" << endl;
         close(*ptr->sock);
     }
     else 
@@ -227,6 +236,7 @@ void* ConnectionHandler::SocketHandler(void* lp)
             cout << "Thread created for machine " << it->first << "Host and port is "<<ptrToSend->hostAndPort<<std::endl;
             pthread_create(&thread_id[t],&attr,&ConnectionHandler::ClientHandler,(void*)ptrToSend );
             t++;
+            ptrList.push_back(ptrToSend);
             //delete ptrToSend;
             cout<<"Finished processing: " <<it->first<<endl;
 	}
@@ -235,7 +245,7 @@ void* ConnectionHandler::SocketHandler(void* lp)
         for(t=0; t< thread_cnt; t++) {
             rc = pthread_join(thread_id[t], &status);
             if (rc) {
-                printf("ERROR; return code from pthread_join()is %d\n", rc);
+                cout << "error: return code from pthread_join()is " << rc << endl;
                 exit(-1);
             }
         }
@@ -272,11 +282,11 @@ void* ConnectionHandler::SocketHandler(void* lp)
         char sdbuf[SIZE];
         FILE *fs = fopen(fs_name, "r");
         stat(fs_name, &filestat);
-        cout << "FILE SIZE FOUND =  " << filestat.st_size << std::endl;
+        cout << "File size to be sent to client " << filestat.st_size << endl;
 
         if(fs == NULL)
         {
-            printf("ERROR: File %s not found.\n", fs_name);
+            cout << "Error opening file to be sent" << endl;
             exit(1);
         }
 
@@ -286,7 +296,7 @@ void* ConnectionHandler::SocketHandler(void* lp)
 
         if(send(*ptr->sock, filesize.c_str(), filesize.length(), 0) < 0)
         {
-            fprintf(stderr, "ERROR: Failed to send size of file %s. (errno = %s)\n", fs_name, strerror(errno));
+            cout << "Failed to send file size to client " << strerror(errno) << endl;
             exit(1);
         }
 
@@ -297,12 +307,12 @@ void* ConnectionHandler::SocketHandler(void* lp)
         {
             if(send(*ptr->sock, sdbuf, fs_block_sz, 0) < 0)
             {
-                fprintf(stderr, "ERROR: Failed to send final file %s. (errno = %s)\n", fs_name, strerror(errno));
+                cout << "Failed to send file " << fs_name << " Error " << strerror(errno) << endl;
                 exit(1);
             }
             bzero(sdbuf, SIZE);
         }
-        printf("Ok File %s from Peer ------> Client was Sent!\n", fs_name);
+        cout << "File " << fs_name << " sent from  Peer ------> Client" << endl;
 
     }
 
@@ -348,130 +358,135 @@ void* ConnectionHandler::ClientHandler(void* lp)
         }
     }
 */
-//    cout << "AIEEEEEEEEE going to crash" << endl; 
-    cout << "In the thread host and port " << hostAndPort; 
+    cout << "Initializing connection to " << hostAndPort << endl; 
     pos = hostAndPort.find(":");
     host_name = hostAndPort.substr(0,pos);
     host_port = atoi((hostAndPort.substr(pos+1,hostAndPort.length() - pos)).c_str());
 
-    hsock = socket(AF_INET, SOCK_STREAM, 0);
-    if(hsock == -1){
-        printf("Error initializing socket %d\n",errno);
-        //goto FINISH;
-    }
-
-    p_int = (int*)malloc(sizeof(int));
-    *p_int = 1;
-
-    if( (setsockopt(hsock, SOL_SOCKET, SO_REUSEADDR, (char*)p_int, sizeof(int)) == -1 )||
-        (setsockopt(hsock, SOL_SOCKET, SO_KEEPALIVE, (char*)p_int, sizeof(int)) == -1 ) ){
-        printf("Error setting options %d\n",errno);
-        free(p_int);
-        //goto FINISH;
-    }
-    free(p_int);
-
-    my_addr.sin_family = AF_INET ;
-    my_addr.sin_port = htons(host_port);
-
-    memset(&(my_addr.sin_zero), 0, 8);
-    my_addr.sin_addr.s_addr = inet_addr(host_name.c_str());
-
-    if( connect( hsock, (struct sockaddr*)&my_addr, sizeof(my_addr)) == -1 ){
-        if((err = errno) != EINPROGRESS){
-            fprintf(stderr, "Error connecting socket %d\n", errno);
-            //goto FINISH;
-        }
-    }
-
-    buffer_len1 = 1024;
-
-    memset(buffer1, '\0', buffer_len1);
-
-    memcpy(buffer1,"peer@",5);
-    strcat(buffer1,ptrc->cmd.c_str());
-    buffer1[strlen(buffer1)]='\0';
-
-    if( (bytecount1=send(hsock, buffer1, strlen(buffer1),0))== -1){
-        fprintf(stderr, "Error sending data %d\n", errno);
-        //goto FINISH;
-    }
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-    std::ostringstream oss;
-    string filename;
-    filename = "machine.";
-    filename += host_name;
-    filename += ":";
-    oss << host_port;
-    filename += oss.str();
-    filename += ".log";
-//    cout << "AIEEEEEEEEEEE " << filename << " host" << host_name << std::endl;
-    char* fr_name = filename.c_str();
-    FILE *fr = fopen(fr_name, "a");
-    if(fr == NULL)
-        printf("File %s Cannot be opened file on server.\n", fr_name);
-    else
+    try
     {
-        bzero(revbuf, SIZE);
-        int fr_block_sz = 0;
-        string size;
-        int count;
-        int filesize;
-        int rcv_filesize = 0;
-        if((count = recv(hsock, size.c_str(), SIZE, 0))== -1){
-            fprintf(stderr, "Error receiving file size %s\n", strerror(errno));
-            goto FINISH;
+        hsock = socket(AF_INET, SOCK_STREAM, 0);
+        if(hsock == -1){
+            cout << "Error initializing socket " << strerror(errno) << endl;
+            throw string("error");
         }
-        filesize = atoi(size.c_str());
-        int write_sz = fwrite(size.c_str(), sizeof(char), count, fr);
-        if(write_sz < fr_block_sz)
-        {
-            printf("File write failed on server.\n");
-        }
-        rcv_filesize += fr_block_sz;
-        bzero(revbuf, SIZE);
 
-        cout << "FILE SIZE RETURNED " << filesize << "SOCKET NO" << hsock << std::endl;
-           
-        while((fr_block_sz = recv(hsock, revbuf, SIZE, 0)) >  0)
+        p_int = (int*)malloc(sizeof(int));
+        *p_int = 1;
+
+        if( (setsockopt(hsock, SOL_SOCKET, SO_REUSEADDR, (char*)p_int, sizeof(int)) == -1 )||
+            (setsockopt(hsock, SOL_SOCKET, SO_KEEPALIVE, (char*)p_int, sizeof(int)) == -1 ) ){
+            cout << "Error setting socket options " << strerror(errno) << endl;
+            free(p_int);
+            throw string("error");
+        }
+        free(p_int);
+
+        my_addr.sin_family = AF_INET ;
+        my_addr.sin_port = htons(host_port);
+
+        memset(&(my_addr.sin_zero), 0, 8);
+        my_addr.sin_addr.s_addr = inet_addr(host_name.c_str());
+
+        if( connect( hsock, (struct sockaddr*)&my_addr, sizeof(my_addr)) == -1 ){
+            if((err = errno) != EINPROGRESS){
+                cout << "Error connecting to peer " << hostAndPort << " Error " << strerror(errno) << endl;
+                throw string("error");
+            }
+        }
+
+        buffer_len1 = 1024;
+
+        memset(buffer1, '\0', buffer_len1);
+        memcpy(buffer1,"peer@",5);
+        strcat(buffer1,ptrc->cmd.c_str());
+        buffer1[strlen(buffer1)]='\0';
+
+        if( (bytecount1=send(hsock, buffer1, strlen(buffer1),0))== -1){
+            cout << "Error sending command to peer " << strerror(errno) << endl;
+            throw string("error");
+        }
+
+    	std::ostringstream oss;
+    	string filename;
+    	filename = "machine.";
+    	filename += host_name;
+    	filename += ":";
+    	oss << host_port;
+    	filename += oss.str();
+    	filename += ".log";
+    	char* fr_name = filename.c_str();
+    	FILE *fr = fopen(fr_name, "a");
+    	if(fr == NULL)
         {
-            //cout<<"Received " << fr_block_sz << std::endl;
-	    write_sz = fwrite(revbuf, sizeof(char), fr_block_sz, fr);
+    	    cout << "File to receive data could not be opened " << endl;
+            throw string("error");
+        }
+    	else
+    	{
+            bzero(revbuf, SIZE);
+            int fr_block_sz = 0;
+            string size;
+            int count;
+            int filesize;
+            int rcv_filesize = 0;
+
+            if((count = recv(hsock, size.c_str(), SIZE, 0))== -1){
+                cout << "Error receiving file size from peer " << strerror(errno) << endl;
+                throw string("error");
+            }
+ 
+            filesize = atoi(size.c_str());
+            int write_sz = fwrite(size.c_str(), sizeof(char), count, fr);
             if(write_sz < fr_block_sz)
             {
-                printf("File write failed on server.\n");
+                cout << "File write failed" << endl;
             }
-            bzero(revbuf, SIZE);
             rcv_filesize += fr_block_sz;
-            //cout << "FILE SIZE RECEIVED " << rcv_filesize << "ACTUAL SIZE " << filesize << std::endl;
-            if (rcv_filesize >= filesize)
+            bzero(revbuf, SIZE);
+
+            cout << "FILE SIZE RETURNED " << filesize << "SOCKET NO" << hsock << std::endl;
+           
+            while((fr_block_sz = recv(hsock, revbuf, SIZE, 0)) >  0)
             {
-                break;
+            	//cout<<"Received " << fr_block_sz << std::endl;
+	        write_sz = fwrite(revbuf, sizeof(char), fr_block_sz, fr);
+                if(write_sz < fr_block_sz)
+                {
+                    cout << "File write failed" << endl;
+                }
+            	bzero(revbuf, SIZE);
+            	rcv_filesize += fr_block_sz;
+            	//cout << "FILE SIZE RECEIVED " << rcv_filesize << "ACTUAL SIZE " << filesize << std::endl;
+            	if (rcv_filesize >= filesize)
+            	{
+                    break;
+            	}
             }
+            cout << "FR BLOCK SZ = " << fr_block_sz << endl;
+            if(fr_block_sz < 0)
+            {
+                if (errno == EAGAIN)
+                {
+              	    printf("recv() timed out.\n");
+            	}
+            	else
+            	{
+                    cout << "recv() failed due to errno " << strerror(errno) << endl;
+                    throw string("error");
+             	}
+            }
+            cout << "File Transfer complete from peer" << endl;
+            fclose(fr);
         }
-        cout << "FR BLOCK SZ = " << fr_block_sz << endl;
-        if(fr_block_sz < 0)
-        {
-            if (errno == EAGAIN)
-            {
-                printf("recv() timed out.\n");
-            }
-            else
-            {
-                fprintf(stderr, "recv() failed due to errno = %d\n", errno);
-                exit(1);
-            }
-        }
-        printf("Ok received from client!\n");
-        fclose(fr);
+    }
+    catch(string sockException)
+    {
+        close(hsock);
+        pthread_exit(NULL);
     }
     close(hsock);
     pthread_exit(NULL);
-
-FINISH:
-    return 0;
-
 }
 
 ConnectionHandler::~ConnectionHandler()
