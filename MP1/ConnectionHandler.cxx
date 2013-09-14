@@ -16,6 +16,7 @@
 #include <list>
 #include "headers/clt.h"
 #include <sys/stat.h>
+#include <math.h>
 
 #include "ConnectionHandler.h"
 
@@ -191,6 +192,11 @@ void* ConnectionHandler::SocketHandler(void* lp)
             }
             bzero(sdbuf, SIZE);
             sentsize += fs_block_sz;
+            //printf("Progress:\e[s");
+
+            //int pct = ((float)sentsize / atoi(filesize.c_str())) * 100;
+            //printf(" %2d (%3d%%)\e[u", sentsize, pct);
+            //fflush(stdout);
             //cout << "FILE SENDING--- SIZE " << sentsize << "SENDIN SIZE " << fs_block_sz << std::endl;
         }
         printf("Ok File %s from Client was Sent!\n", fs_name);
@@ -258,15 +264,32 @@ void* ConnectionHandler::SocketHandler(void* lp)
         cout << "File names ------" << filept << " count " << t << std::endl;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        std::ostringstream oss;
+        string filesize;
+        int sentsize =0;
 
         char* fs_name = filept.c_str();
         char sdbuf[SIZE];
         FILE *fs = fopen(fs_name, "r");
+        stat(fs_name, &filestat);
+        cout << "FILE SIZE FOUND =  " << filestat.st_size << std::endl;
+
         if(fs == NULL)
         {
             printf("ERROR: File %s not found.\n", fs_name);
             exit(1);
         }
+
+        bzero(sdbuf, SIZE);
+        oss << filestat.st_size;
+        filesize = oss.str();
+
+        if(send(*ptr->sock, filesize.c_str(), filesize.length(), 0) < 0)
+        {
+            fprintf(stderr, "ERROR: Failed to send size of file %s. (errno = %s)\n", fs_name, strerror(errno));
+            exit(1);
+        }
+
 
         bzero(sdbuf, SIZE);
         int fs_block_sz;

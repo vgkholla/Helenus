@@ -67,6 +67,7 @@ int main(){
 
     printf("Enter some text to send to the server (press enter)\n");
     string cmd = CommandLineTools::showAndHandlePrompt(1);
+    time_t start = time(0);
     //fgets(buffer, 1024, stdin);
     strcat(buffer, "client@");
     strcat(buffer, cmd.c_str());
@@ -95,6 +96,44 @@ int main(){
     {
         bzero(revbuf, SIZE);
         int fr_block_sz = 0;
+        std::string size;
+        int count = 0;
+        int filesize= 0;
+        int rcv_filesize = 0;
+        if((count = recv(hsock, size.c_str(), SIZE, 0))== -1){
+            fprintf(stderr, "Error receiving file size %s\n", strerror(errno));
+            exit(1);
+        }
+        filesize = atoi(size.c_str());
+        int write_sz = fwrite(size.c_str(), sizeof(char), count, fr);
+        if(write_sz < fr_block_sz)
+        {
+            printf("File write failed on server.\n");
+        }
+        rcv_filesize += fr_block_sz;
+        bzero(revbuf, SIZE);
+
+        cout << "FILE SIZE RETURNED " << filesize << "SOCKET NO" << hsock << std::endl;
+
+        while((fr_block_sz = recv(hsock, revbuf, SIZE, 0)) >  0)
+        {
+            //cout<<"Received " << fr_block_sz << std::endl;
+            write_sz = fwrite(revbuf, sizeof(char), fr_block_sz, fr);
+            if(write_sz < fr_block_sz)
+            {
+                printf("File write failed on server.\n");
+            }
+            bzero(revbuf, SIZE);
+            rcv_filesize += fr_block_sz;
+            //cout << "FILE SIZE RECEIVED " << rcv_filesize << "ACTUAL SIZE " << filesize << std::endl;
+            if (rcv_filesize >= filesize)
+            {
+                break;
+            }
+        }
+/*
+        bzero(revbuf, SIZE);
+        int fr_block_sz = 0;
         while((fr_block_sz = recv(hsock, revbuf, SIZE, 0)) > 0)
         {
             int write_sz = fwrite(revbuf, sizeof(char), fr_block_sz, fr);
@@ -107,7 +146,7 @@ int main(){
             {
                 break;
             }
-        }
+        }*/
         if(fr_block_sz < 0)
         {
             if (errno == EAGAIN)
@@ -120,6 +159,8 @@ int main(){
                 exit(1);
             }
         }
+        time_t end = time(0);
+        cout<<"Time taken: " << end -start <<endl;
         printf("Ok received from client!\n");
         fclose(fr);
     }

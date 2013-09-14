@@ -145,7 +145,7 @@ class CommandLineTools {
 		string mergeFilePath = OUTPUT_FILE_BASE_PATH + mergeFileName;
 
 		//going to resort to UNIX commands to do this
-		string cmdToMerge = "cat ";
+		string cmdToMerge = "cat abc.txt ";
 		int i = 0;
 
 		for (i =0; i < noOfFiles; i++) {
