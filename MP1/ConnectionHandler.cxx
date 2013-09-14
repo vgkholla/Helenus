@@ -59,61 +59,69 @@ ConnectionHandler::ConnectionHandler(string src,
     {
         std::cout << it->first << " " << it->second << "\n";
     }
-
-    /* Opening socket and binding and listening to it */
-    hsock = socket(AF_INET, SOCK_STREAM, 0);
-    if(hsock == -1){
-        cout << "Error opening socket " << strerror(errno) << endl;
-        goto FINISH;
-    }
+    try
+    {
+        /* Opening socket and binding and listening to it */
+        hsock = socket(AF_INET, SOCK_STREAM, 0);
+        if(hsock == -1){
+            cout << "Error opening socket " << strerror(errno) << endl;
+            throw string("error");
+        }
     
-    p_int = (int*)malloc(sizeof(int));
-    *p_int = 1;
+        p_int = (int*)malloc(sizeof(int));
+        *p_int = 1;
         
-    if( (setsockopt(hsock, SOL_SOCKET, SO_REUSEADDR, (char*)p_int, sizeof(int)) == -1 )||
-        (setsockopt(hsock, SOL_SOCKET, SO_KEEPALIVE, (char*)p_int, sizeof(int)) == -1 ) ){
-        cout << "Error setting socket options " << strerror(errno) << endl;
+        if( (setsockopt(hsock, SOL_SOCKET, SO_REUSEADDR, (char*)p_int, sizeof(int)) == -1 )||
+            (setsockopt(hsock, SOL_SOCKET, SO_KEEPALIVE, (char*)p_int, sizeof(int)) == -1 ) ){
+            cout << "Error setting socket options " << strerror(errno) << endl;
+            free(p_int);
+            throw string("error");
+        }
         free(p_int);
-        goto FINISH;
-    }
-    free(p_int);
 
-    my_addr.sin_family = AF_INET ;
-    my_addr.sin_port = htons(atoi(port.c_str()));
+        my_addr.sin_family = AF_INET ;
+        my_addr.sin_port = htons(atoi(port.c_str()));
     
-    memset(&(my_addr.sin_zero), 0, 8);
-    my_addr.sin_addr.s_addr = inet_addr(address.c_str());;
+        memset(&(my_addr.sin_zero), 0, 8);
+        my_addr.sin_addr.s_addr = inet_addr(address.c_str());;
     
-    if( bind( hsock, (sockaddr*)&my_addr, sizeof(my_addr)) == -1 ){
-        cout << "Error binding to socket, make sure nothing else is listening on this port " << strerror(errno) << endl;
-        goto FINISH;
-    }
-    if(listen( hsock, 10) == -1 ){
-        cout << "Error listening on socket " << strerror(errno) << endl;
-        goto FINISH;
-    }
+        if( bind( hsock, (sockaddr*)&my_addr, sizeof(my_addr)) == -1 ){
+            cout << "Error binding to socket, make sure nothing else is listening on this port " << strerror(errno) << endl;
+            throw string("error");
+        }
+        if(listen( hsock, 10) == -1 ){
+            cout << "Error listening on socket " << strerror(errno) << endl;
+            throw string("error");
+        }
 
-    addr_size = sizeof(sockaddr_in);
+        addr_size = sizeof(sockaddr_in);
 
-    /* Accepting connections from clients */
+        /* Accepting connections from client */
         
-    while(true){
-        cout << "Waiting for a connection on port " << atoi(port.c_str()) << endl;
-        csock = (int*)malloc(sizeof(int));
-        if((*csock = accept( hsock, (sockaddr*)&sadr, &addr_size))!= -1){
-            f->sock = csock;
-            f->owner = this;
-            cout << "Received connection from " <<  inet_ntoa(sadr.sin_addr) << endl;
-            pthread_create(&thread_id,0,&ConnectionHandler::SocketHandler, (void*)f);
-            pthread_detach(thread_id);
-        }
-        else{
-            cout << "Error accepting connection " << strerror(errno) << endl;
+        while(true){
+            cout << "Waiting for a connection on port " << atoi(port.c_str()) << endl;
+            csock = (int*)malloc(sizeof(int));
+            if((*csock = accept( hsock, (sockaddr*)&sadr, &addr_size))!= -1){
+                f->sock = csock;
+                f->owner = this;
+                cout << "Received connection from " <<  inet_ntoa(sadr.sin_addr) << endl;
+                pthread_create(&thread_id,0,&ConnectionHandler::SocketHandler, (void*)f);
+                pthread_detach(thread_id);
+            }
+            else
+            {
+                cout << "Error accepting connection " << strerror(errno) << endl;
+                throw string("error");
+            }
         }
     }
+    catch(string sockException)
+    {
+        close(hsock);
+        hsock = -1;
+        exit(-1);
+    }
     
-FINISH:
-;
 }
 
 void* ConnectionHandler::SocketHandler(void* lp)
@@ -146,181 +154,176 @@ void* ConnectionHandler::SocketHandler(void* lp)
        if it is a peer or a client and the command send 
        from the remote machine
      */
-    memset(buffer, 0, buffer_len);
-    if((bytecount = recv(*ptr->sock, buffer, buffer_len, 0))== -1){
-        cout << "Error receiving data " << strerror(errno) << endl;
-        goto FINISH;
-    }
+    try
+    {
+    	memset(buffer, 0, buffer_len);
+    	if((bytecount = recv(*ptr->sock, buffer, buffer_len, 0))== -1){
+    	    cout << "Error receiving data " << strerror(errno) << endl;
+            throw string("error");
+    	}
     
-    msg = buffer;
-    pos = msg.find("@");
-    peerOrClient = msg.substr(0,pos);
-    command = msg.substr(pos+1,msg.length() - pos);
+    	msg = buffer;
+    	pos = msg.find("@");
+    	peerOrClient = msg.substr(0,pos);
+    	command = msg.substr(pos+1,msg.length() - pos);
 
-    cout << "Got connection from: " << peerOrClient << " Command received: " << command << endl;
+    	cout << "Got connection from: " << peerOrClient << " Command received: " << command << endl;
 
-    if (peerOrClient == "peer") 
-    {
-        strcat(buffer, " SERVER ECHO TIAGI");
-        printf("\n Got Connection from a peer, sending back data");
-        command = CommandLineTools::parseGrepCmd(ptr1->machine_no, command);
-	details->reset();
-	filept = CommandLineTools::tagAndExecuteCmd(ptr1->machine_no, command, details);
-        char* fs_name = filept.c_str();
-        char sdbuf[SIZE];
-        std::ostringstream oss;
-        string filesize;
-        int sentsize =0;
-        stat(fs_name, &filestat);
-        cout << "File size to be sent " << filestat.st_size << endl;
+    	if (peerOrClient == "peer") 
+    	{
+            strcat(buffer, " SERVER ECHO TIAGI");
+            printf("\n Got Connection from a peer, sending back data");
+            command = CommandLineTools::parseGrepCmd(ptr1->machine_no, command);
+	    details->reset();
+	    filept = CommandLineTools::tagAndExecuteCmd(ptr1->machine_no, command, details);
+            char* fs_name = filept.c_str();
+            char sdbuf[SIZE];
+            std::ostringstream oss;
+            string filesize;
+            int sentsize =0;
+            stat(fs_name, &filestat);
+            cout << "File size to be sent " << filestat.st_size << endl;
         
-        FILE *fs = fopen(fs_name, "r");
-        if(fs == NULL)
-        {
-            cout << "ERROR: File " << fs_name << " not found." << endl;
-            exit(1);
-        }
+            FILE *fs = fopen(fs_name, "r");
+            if(fs == NULL)
+            {
+            	cout << "ERROR: File " << fs_name << " not found." << endl;
+            	throw string("error");
+            }
 
-        bzero(sdbuf, SIZE);
-        int fs_block_sz;
-        oss << filestat.st_size;
-        filesize = oss.str();
+            bzero(sdbuf, SIZE);
+            int fs_block_sz;
+            oss << filestat.st_size;
+            filesize = oss.str();
  
-        if(send(*ptr->sock, filesize.c_str(), filesize.length(), 0) < 0)
-        {
-            cout << "ERROR: Failed to send file size" << strerror(errno) << endl;
-            exit(1);
-        }
-
-        while((fs_block_sz = fread(sdbuf, sizeof(char), SIZE, fs)) > 0)
-        {
-            if(send(*ptr->sock, sdbuf, fs_block_sz, 0) < 0)
+            if(send(*ptr->sock, filesize.c_str(), filesize.length(), 0) < 0)
             {
-                cout << "ERROR: Failed to send file from peer " << strerror(errno) << endl;
-                exit(1);
+            	cout << "ERROR: Failed to send file size" << strerror(errno) << endl;
+                throw string("error");
             }
-            bzero(sdbuf, SIZE);
-            sentsize += fs_block_sz;
-            //printf("Progress:\e[s");
 
-            //int pct = ((float)sentsize / atoi(filesize.c_str())) * 100;
-            //printf(" %2d (%3d%%)\e[u", sentsize, pct);
-            //fflush(stdout);
-            //cout << "FILE SENDING--- SIZE " << sentsize << "SENDIN SIZE " << fs_block_sz << std::endl;
-        }
-        cout << "File sent to the peer" << endl;
-        close(*ptr->sock);
-    }
-    else 
-    {
-        pthread_attr_init(&attr);
-        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-/*
-        for(t=0; t < thread_cnt; t++)
-        {
-            ptr->cmd = command;
-            cout << "Thread created for machine " << t << std::endl;
-            pthread_create(&thread_id[t],&attr,&ConnectionHandler::ClientHandler,(void*)ptr );
-        }
-*/
-        t = 0;
-        for(map<string,string >::const_iterator it = ptr1->peers.begin();
-            it != ptr1->peers.end(); ++it)
-        {
-            mystruct *ptrToSend = new mystruct;
-            ptrToSend->owner = ptr->owner;
-            ptrToSend->cmd = command;
-            ptrToSend->hostAndPort = it->first;
-            ptrToSend->sock = ptr->sock;
-            it->second = "connected";
-            cout << "Thread created for machine " << it->first << "Host and port is "<<ptrToSend->hostAndPort<<std::endl;
-            pthread_create(&thread_id[t],&attr,&ConnectionHandler::ClientHandler,(void*)ptrToSend );
-            t++;
-            ptrList.push_back(ptrToSend);
-            //delete ptrToSend;
-            cout<<"Finished processing: " <<it->first<<endl;
-	}
+            while((fs_block_sz = fread(sdbuf, sizeof(char), SIZE, fs)) > 0)
+            {
+            	if(send(*ptr->sock, sdbuf, fs_block_sz, 0) < 0)
+            	{
+                    cout << "ERROR: Failed to send file from peer " << strerror(errno) << endl;
+                    throw string("error");
+            	}
+            	bzero(sdbuf, SIZE);
+            	sentsize += fs_block_sz;
+            	//printf("Progress:\e[s");
 
-        pthread_attr_destroy(&attr);
-        for(t=0; t< thread_cnt; t++) {
-            rc = pthread_join(thread_id[t], &status);
-            if (rc) {
-                cout << "error: return code from pthread_join()is " << rc << endl;
-                exit(-1);
+            	//int pct = ((float)sentsize / atoi(filesize.c_str())) * 100;
+            	//printf(" %2d (%3d%%)\e[u", sentsize, pct);
+            	//fflush(stdout);
+            	//cout << "FILE SENDING--- SIZE " << sentsize << "SENDIN SIZE " << fs_block_sz << std::endl;
             }
-        }
+            cout << "File sent to the peer" << endl;
+            close(*ptr->sock);
+    	}
+    	else 
+    	{
+            pthread_attr_init(&attr);
+            pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+            t = 0;
+            for(map<string,string >::const_iterator it = ptr1->peers.begin();
+                it != ptr1->peers.end(); ++it)
+            {
+            	mystruct *ptrToSend = new mystruct;
+            	ptrToSend->owner = ptr->owner;
+            	ptrToSend->cmd = command;
+            	ptrToSend->hostAndPort = it->first;
+            	ptrToSend->sock = ptr->sock;
+            	it->second = "connected";
+            	cout << "Thread created for machine " << it->first << "Host and port is "<<ptrToSend->hostAndPort<<std::endl;
+            	pthread_create(&thread_id[t],&attr,&ConnectionHandler::ClientHandler,(void*)ptrToSend );
+            	t++;
+            	ptrList.push_back(ptrToSend);
+            	//delete ptrToSend;
+            	cout<<"Finished processing: " <<it->first<<endl;
+	    }
+
+            pthread_attr_destroy(&attr);
+            for(t=0; t< thread_cnt; t++) {
+                rc = pthread_join(thread_id[t], &status);
+                if (rc) {
+                    cout << "error: return code from pthread_join()is " << rc << endl;
+                    throw string("error");
+            	}
+            }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        t = 0;
-        for(map<string,string >::const_iterator it = ptr1->peers.begin();
-            it != ptr1->peers.end(); ++it)
-        {
-            if(it->second == "connected")
+            t = 0;
+            for(map<string,string >::const_iterator it = ptr1->peers.begin();
+                it != ptr1->peers.end(); ++it)
             {
-                filenames[t] = "machine.";
-                filenames[t] += it->first;
-                filenames[t] += ".log";
-                t++;
+            	if(it->second == "connected")
+            	{
+                    filenames[t] = "machine.";
+                    filenames[t] += it->first;
+                    filenames[t] += ".log";
+                    t++;
+            	}
             }
-        }
         
-	details->reset();
-        command = CommandLineTools::parseGrepCmd(ptr1->machine_no, command);
-        details->reset();
-	filenames[t] = CommandLineTools::tagAndExecuteCmd(ptr1->machine_no, command, details);
-        t++;
-        details->reset();	
-        filept = CommandLineTools::mergeFileOutputs(filenames,t,details,0);
-        cout << "File names ------" << filept << " count " << t << std::endl;
+	    details->reset();
+            command = CommandLineTools::parseGrepCmd(ptr1->machine_no, command);
+            details->reset();
+	    filenames[t] = CommandLineTools::tagAndExecuteCmd(ptr1->machine_no, command, details);
+            t++;
+            details->reset();	
+            filept = CommandLineTools::mergeFileOutputs(filenames,t,details,0);
+            cout << "File names ------" << filept << " count " << t << std::endl;
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        std::ostringstream oss;
-        string filesize;
-        int sentsize =0;
+            std::ostringstream oss;
+            string filesize;
+            int sentsize =0;
 
-        char* fs_name = filept.c_str();
-        char sdbuf[SIZE];
-        FILE *fs = fopen(fs_name, "r");
-        stat(fs_name, &filestat);
-        cout << "File size to be sent to client " << filestat.st_size << endl;
-
-        if(fs == NULL)
-        {
-            cout << "Error opening file to be sent" << endl;
-            exit(1);
-        }
-
-        bzero(sdbuf, SIZE);
-        oss << filestat.st_size;
-        filesize = oss.str();
-
-        if(send(*ptr->sock, filesize.c_str(), filesize.length(), 0) < 0)
-        {
-            cout << "Failed to send file size to client " << strerror(errno) << endl;
-            exit(1);
-        }
-
-
-        bzero(sdbuf, SIZE);
-        int fs_block_sz;
-        while((fs_block_sz = fread(sdbuf, sizeof(char), SIZE, fs)) > 0)
-        {
-            if(send(*ptr->sock, sdbuf, fs_block_sz, 0) < 0)
+            char* fs_name = filept.c_str();
+            char sdbuf[SIZE];
+            FILE *fs = fopen(fs_name, "r");
+            stat(fs_name, &filestat);
+            cout << "File size to be sent to client " << filestat.st_size << endl;
+	
+            if(fs == NULL)
             {
-                cout << "Failed to send file " << fs_name << " Error " << strerror(errno) << endl;
-                exit(1);
-            }
+            	cout << "Error opening file to be sent" << endl;
+            	throw string("error");
+            }	
+
             bzero(sdbuf, SIZE);
-        }
-        cout << "File " << fs_name << " sent from  Peer ------> Client" << endl;
+            oss << filestat.st_size;
+            filesize = oss.str();
 
+            if(send(*ptr->sock, filesize.c_str(), filesize.length(), 0) < 0)
+            {
+            	cout << "Failed to send file size to client " << strerror(errno) << endl;
+            	throw string("error");
+            }
+
+
+            bzero(sdbuf, SIZE);
+            int fs_block_sz;
+            while((fs_block_sz = fread(sdbuf, sizeof(char), SIZE, fs)) > 0)
+            {
+                if(send(*ptr->sock, sdbuf, fs_block_sz, 0) < 0)
+                {
+                    cout << "Failed to send file " << fs_name << " Error " << strerror(errno) << endl;
+                    throw string("error");
+            	}
+            	bzero(sdbuf, SIZE);
+            }
+            cout << "File " << fs_name << " sent from  Peer ------> Client" << endl;
+
+    	}
     }
-
+    catch(string sockException)
+    {
+        close(*ptr->sock);
+        *ptr->sock = -1;
+        pthread_exit(NULL);
+    }
     pthread_exit(NULL);
-
-FINISH:
-    //free(csock);
-    return 0;
 }
 
 void* ConnectionHandler::ClientHandler(void* lp)
@@ -483,9 +486,11 @@ void* ConnectionHandler::ClientHandler(void* lp)
     catch(string sockException)
     {
         close(hsock);
+        hsock = -1;
         pthread_exit(NULL);
     }
     close(hsock);
+    hsock = -1;
     pthread_exit(NULL);
 }
 
