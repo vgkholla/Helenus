@@ -1,0 +1,48 @@
+For running the distibuted grepper
+
+#create the log files first
+
+The log files reside at /tmp/ag. Create the folder and add machine.i.log where i is the ID of each machine
+
+#run make in the root folder
+
+The make creates an output binary P2P
+
+# run g++ client.cpp -fpermissive -o client
+
+This creates the client binary
+
+#bring up the machines
+
+Representative command follows
+./P2P --src source_ip:source_port --machineno i [peer_1_ip:peer_1_port peer_2_ip:peer_2_port ...]
+
+where i is the unique machine number
+
+#now start up the client
+
+./client --dst one_machine_ip --port one_machine_port [--command cmd]
+
+#if the optional command argument is not given, the client shows a prompt for the command
+
+#enter the command you want
+
+for key:
+grep --key key1
+
+for value 
+grep --value value1
+
+for key and value
+
+grep --key key1 | grep --value value1
+
+The final output will be available at FinalOutput - a file created in the directory with the client binary
+
+For running unit tests
+
+1. Add random lines that you know to each of the logs
+2. Create expected output files which is what you would expect the output of a grep commands on these keys/values would be
+3. Open grepUnitTest and add the commands you want executed to the array greps
+4. Name the expected output file for each command as expectedOutput_i where i is the ith command (counting from 1) and store it in the unitTesting folder
+5. Run grepUnitTest (./grepUnitTest)  
