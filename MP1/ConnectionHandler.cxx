@@ -14,11 +14,11 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <list>
-#include "headers/clt.h"
 #include <sys/stat.h>
 #include <math.h>
 
 #include "ConnectionHandler.h"
+#include "headers/clt.h"
 
 #define SIZE 1024
 using namespace std;
@@ -211,7 +211,6 @@ void* ConnectionHandler::SocketHandler(void* lp)
             	pthread_create(&thread_id[t],&attr,&ConnectionHandler::ClientHandler,(void*)ptrToSend );
             	t++;
             	ptrList.push_back(ptrToSend);
-            	//delete ptrToSend;
             	cout<<"Finished processing: " <<it->first<<endl;
 	    }
 
@@ -401,7 +400,6 @@ void* ConnectionHandler::ClientHandler(void* lp)
              */
             while((fr_block_sz = recv(hsock, revbuf, SIZE, 0)) >  0)
             {
-            	//cout<<"Received " << fr_block_sz << std::endl;
 	        write_sz = fwrite(revbuf, sizeof(char), fr_block_sz, fr);
                 if(write_sz < fr_block_sz)
                 {
@@ -409,7 +407,6 @@ void* ConnectionHandler::ClientHandler(void* lp)
                 }
             	bzero(revbuf, SIZE);
             	rcv_filesize += fr_block_sz;
-            	//cout << "FILE SIZE RECEIVED " << rcv_filesize << "ACTUAL SIZE " << filesize << std::endl;
             	if (rcv_filesize >= filesize)
             	{
                     break;
@@ -500,7 +497,5 @@ int ConnectionHandler::sendFile(string filept, void *lp)
 
 ConnectionHandler::~ConnectionHandler()
 {
-//    close(getFd());
-//    setFd(-1);
 }
 

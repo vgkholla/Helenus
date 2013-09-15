@@ -17,22 +17,27 @@ int main(int argc,
         std::cerr << "Usage: " << argv[0] << " --src SOURCE --machineno MACHINENO DESTINATIONS" << std::endl;
         return 1;
     }
+    /* Accept the command inputs
+     * My IP address
+     * My machine no
+     * My peers IP Addresses
+     */
     std::list <string> dest;
     string src;
     int machineno;
     for (int i = 1; i < argc; ++i) {
         if (std::string(argv[i]) == "--src") {
-            if (i + 1 < argc) { // Make sure we aren't at the end of argv!
-                src = argv[++i]; // Increment 'i' so we don't get the argument as the next argv[i].
-            } else { // Uh-oh, there was no argument to the destination option.
+            if (i + 1 < argc) { 
+                src = argv[++i]; 
+            } else { 
                   std::cerr << "--src option requires one argument." << std::endl;
                 return 1;
             }
         } 
         else if (std::string(argv[i]) == "--machineno") {
-            if (i + 1 < argc) { // Make sure we aren't at the end of argv!
-                machineno = atoi(argv[++i]); // Increment 'i' so we don't get the argument as the next argv[i].
-            } else { // Uh-oh, there was no argument to the destination option.
+            if (i + 1 < argc) { 
+                machineno = atoi(argv[++i]); 
+            } else { 
                   std::cerr << "--src option requires one argument." << std::endl;
                 return 1;
             }
@@ -41,8 +46,10 @@ int main(int argc,
             dest.push_back(argv[i]);
         }
     }
+
+    /** Start the Peer with IP address and its machine no */
     ConnectionHandler conn(src,machineno,dest);
-    syslog(LOG_INFO,"\nPeer ran");
+    syslog(LOG_INFO,"\nStarting Peer");
     while (1) {}
     return (0);
 }
