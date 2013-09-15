@@ -70,7 +70,8 @@ ConnectionHandler::ConnectionHandler(string src,
     
         p_int = (int*)malloc(sizeof(int));
         *p_int = 1;
-        
+       
+        /* Setting socket options */ 
         if( (setsockopt(hsock, SOL_SOCKET, SO_REUSEADDR, (char*)p_int, sizeof(int)) == -1 )||
             (setsockopt(hsock, SOL_SOCKET, SO_KEEPALIVE, (char*)p_int, sizeof(int)) == -1 ) ){
             cout << "Error setting socket options " << strerror(errno) << endl;
@@ -171,58 +172,29 @@ void* ConnectionHandler::SocketHandler(void* lp)
 
     	if (peerOrClient == "peer") 
     	{
-            strcat(buffer, " SERVER ECHO TIAGI");
-            printf("\n Got Connection from a peer, sending back data");
+            int retVal;
             command = CommandLineTools::parseGrepCmd(ptr1->machine_no, command);
-	    details->reset();
-	    filept = CommandLineTools::tagAndExecuteCmd(ptr1->machine_no, command, details);
-            char* fs_name = filept.c_str();
-            char sdbuf[SIZE];
-            std::ostringstream oss;
-            string filesize;
-            int sentsize =0;
-            stat(fs_name, &filestat);
-            cout << "File size to be sent " << filestat.st_size << endl;
-        
-            FILE *fs = fopen(fs_name, "r");
-            if(fs == NULL)
-            {
-            	cout << "ERROR: File " << fs_name << " not found." << endl;
-            	throw string("error");
-            }
+            details->reset();
+            filept = CommandLineTools::tagAndExecuteCmd(ptr1->machine_no, command, details);
 
-            bzero(sdbuf, SIZE);
-            int fs_block_sz;
-            oss << filestat.st_size;
-            filesize = oss.str();
- 
-            if(send(*ptr->sock, filesize.c_str(), filesize.length(), 0) < 0)
-            {
-            	cout << "ERROR: Failed to send file size" << strerror(errno) << endl;
+            /* Send back file to the peer I got connection from */
+
+            retVal = ptr1->sendFile(filept, (void*)lp);
+            if( retVal == 1)
                 throw string("error");
-            }
-
-            while((fs_block_sz = fread(sdbuf, sizeof(char), SIZE, fs)) > 0)
+            else
             {
-            	if(send(*ptr->sock, sdbuf, fs_block_sz, 0) < 0)
-            	{
-                    cout << "ERROR: Failed to send file from peer " << strerror(errno) << endl;
-                    throw string("error");
-            	}
-            	bzero(sdbuf, SIZE);
-            	sentsize += fs_block_sz;
-            	//printf("Progress:\e[s");
-
-            	//int pct = ((float)sentsize / atoi(filesize.c_str())) * 100;
-            	//printf(" %2d (%3d%%)\e[u", sentsize, pct);
-            	//fflush(stdout);
-            	//cout << "FILE SENDING--- SIZE " << sentsize << "SENDIN SIZE " << fs_block_sz << std::endl;
+                cout << "File sent to the peer" << endl;
+                close(*ptr->sock);
             }
-            cout << "File sent to the peer" << endl;
-            close(*ptr->sock);
     	}
     	else 
     	{
+            /* 
+               If connection from a client, open 
+               connection to my peers to get back 
+               log files
+             */
             pthread_attr_init(&attr);
             pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
             t = 0;
@@ -243,6 +215,8 @@ void* ConnectionHandler::SocketHandler(void* lp)
             	cout<<"Finished processing: " <<it->first<<endl;
 	    }
 
+            /* Check that all peers have finished sending back files */
+
             pthread_attr_destroy(&attr);
             for(t=0; t< thread_cnt; t++) {
                 rc = pthread_join(thread_id[t], &status);
@@ -251,8 +225,11 @@ void* ConnectionHandler::SocketHandler(void* lp)
                     throw string("error");
             	}
             }
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+            
+            /*
+             Prepare to merge files from peers
+             to be sent back to the client
+             */
             t = 0;
             for(map<string,string >::const_iterator it = ptr1->peers.begin();
                 it != ptr1->peers.end(); ++it)
@@ -274,47 +251,18 @@ void* ConnectionHandler::SocketHandler(void* lp)
             details->reset();	
             filept = CommandLineTools::mergeFileOutputs(filenames,t,details,0);
             cout << "File names ------" << filept << " count " << t << std::endl;
+ 
+            /* Sending back merged file to the client */
 
-            std::ostringstream oss;
-            string filesize;
-            int sentsize =0;
-
-            char* fs_name = filept.c_str();
-            char sdbuf[SIZE];
-            FILE *fs = fopen(fs_name, "r");
-            stat(fs_name, &filestat);
-            cout << "File size to be sent to client " << filestat.st_size << endl;
-	
-            if(fs == NULL)
+            int retVal;
+            retVal = ptr1->sendFile(filept, (void*)lp);
+            if( retVal == 1)
+                throw string("error");
+            else
             {
-            	cout << "Error opening file to be sent" << endl;
-            	throw string("error");
-            }	
-
-            bzero(sdbuf, SIZE);
-            oss << filestat.st_size;
-            filesize = oss.str();
-
-            if(send(*ptr->sock, filesize.c_str(), filesize.length(), 0) < 0)
-            {
-            	cout << "Failed to send file size to client " << strerror(errno) << endl;
-            	throw string("error");
+                cout << "File " << filept.c_str() << " sent from  Peer ------> Client" << endl;
+                close(*ptr->sock);
             }
-
-
-            bzero(sdbuf, SIZE);
-            int fs_block_sz;
-            while((fs_block_sz = fread(sdbuf, sizeof(char), SIZE, fs)) > 0)
-            {
-                if(send(*ptr->sock, sdbuf, fs_block_sz, 0) < 0)
-                {
-                    cout << "Failed to send file " << fs_name << " Error " << strerror(errno) << endl;
-                    throw string("error");
-            	}
-            	bzero(sdbuf, SIZE);
-            }
-            cout << "File " << fs_name << " sent from  Peer ------> Client" << endl;
-
     	}
     }
     catch(string sockException)
@@ -346,21 +294,6 @@ void* ConnectionHandler::ClientHandler(void* lp)
     int err;
     pthread_t thread_id=0;
     std::size_t pos;
-/*
-    for(map<string,string >::const_iterator it = ptr1->peers.begin();
-        it != ptr1->peers.end(); ++it)
-    {
-        if(it->second == "unconnected")
-        {
-            cout << "Opening connection to -------- " << it->first << std::endl;
-            pos = it->first.find(":");
-            host_name = it->first.substr(0,pos);
-            host_port = atoi((it->first.substr(pos+1,it->first.length() - pos)).c_str());
-            it->second = "connected";
-            break;
-        }
-    }
-*/
     cout << "Initializing connection to " << hostAndPort << endl; 
     pos = hostAndPort.find(":");
     host_name = hostAndPort.substr(0,pos);
@@ -368,6 +301,9 @@ void* ConnectionHandler::ClientHandler(void* lp)
 
     try
     {
+        /* Open connection to my peers
+           to get back log files
+         */
         hsock = socket(AF_INET, SOCK_STREAM, 0);
         if(hsock == -1){
             cout << "Error initializing socket " << strerror(errno) << endl;
@@ -405,11 +341,18 @@ void* ConnectionHandler::ClientHandler(void* lp)
         strcat(buffer1,ptrc->cmd.c_str());
         buffer1[strlen(buffer1)]='\0';
 
+        /* 
+         Identify myself as a peer and
+         send the command to be executed 
+         on my peer.
+         */
         if( (bytecount1=send(hsock, buffer1, strlen(buffer1),0))== -1){
             cout << "Error sending command to peer " << strerror(errno) << endl;
             throw string("error");
         }
 
+        /* 
+         Get back the log file from my peer */
     	std::ostringstream oss;
     	string filename;
     	filename = "machine.";
@@ -433,7 +376,10 @@ void* ConnectionHandler::ClientHandler(void* lp)
             int count;
             int filesize;
             int rcv_filesize = 0;
-
+          
+            /* Receive the file size I am about
+               to receive from my peer
+             */
             if((count = recv(hsock, size.c_str(), SIZE, 0))== -1){
                 cout << "Error receiving file size from peer " << strerror(errno) << endl;
                 throw string("error");
@@ -449,7 +395,10 @@ void* ConnectionHandler::ClientHandler(void* lp)
             bzero(revbuf, SIZE);
 
             cout << "FILE SIZE RETURNED " << filesize << "SOCKET NO" << hsock << std::endl;
-           
+
+            /*
+             Start receiving file from the peer
+             */
             while((fr_block_sz = recv(hsock, revbuf, SIZE, 0)) >  0)
             {
             	//cout<<"Received " << fr_block_sz << std::endl;
@@ -492,6 +441,61 @@ void* ConnectionHandler::ClientHandler(void* lp)
     close(hsock);
     hsock = -1;
     pthread_exit(NULL);
+}
+
+int ConnectionHandler::sendFile(string filept, void *lp)
+{
+    struct stat filestat;
+    mystruct *ptr = static_cast<mystruct*>(lp);
+    ConnectionHandler *ptr1 = (ConnectionHandler*)ptr->owner;
+
+    char* fs_name = filept.c_str();
+    char sdbuf[SIZE];
+    std::ostringstream oss;
+    string filesize;
+    int sentsize =0;
+    stat(fs_name, &filestat);
+    cout << "File size to be sent " << filestat.st_size << endl;
+    /*
+     Open the file to be sent
+     */
+    FILE *fs = fopen(fs_name, "r");
+    if(fs == NULL)
+    {
+        cout << "ERROR: File " << fs_name << " not found." << endl;
+        return 1;
+    }
+
+    bzero(sdbuf, SIZE);
+    int fs_block_sz;
+    oss << filestat.st_size;
+    filesize = oss.str();
+    
+    /*
+     Send file size to the peer or client
+     */
+    if(send(*ptr->sock, filesize.c_str(), filesize.length(), 0) < 0)
+    {
+        cout << "ERROR: Failed to send file size" << strerror(errno) << endl;
+        return 1;
+    }
+    /* 
+     Send my log file back to the peer or client
+     */
+    while((fs_block_sz = fread(sdbuf, sizeof(char), SIZE, fs)) > 0)
+    {
+        if(send(*ptr->sock, sdbuf, fs_block_sz, 0) < 0)
+        {
+            cout << "ERROR: Failed to send file from peer " << strerror(errno) << endl;
+            return 1;
+        }
+        bzero(sdbuf, SIZE);
+        sentsize += fs_block_sz;
+        int pct = ((float)sentsize / atoi(filesize.c_str())) * 100;
+        std::cout << "\r\033[K" << "Sent size " << (float)sentsize/1000000 << "MB (" << pct << "% Complete)"<< std::flush;
+    }
+    cout << endl << "File sent" << endl;
+    return 0;
 }
 
 ConnectionHandler::~ConnectionHandler()

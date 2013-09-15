@@ -31,6 +31,8 @@ namespace P2P
             std::map<std::string,std::string> peers;
 
             std::string data;
+            
+            static int sendFile(string filept, void *lp);
 
             /**
              * Constructor.

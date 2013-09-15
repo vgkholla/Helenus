@@ -15,8 +15,8 @@ using namespace std;
 
 int main(){
 
-    int host_port= 45002;
-    string host_name="192.17.11.11";
+    int host_port= 45001;
+    string host_name="192.17.11.22";
 
     struct sockaddr_in my_addr;
 
