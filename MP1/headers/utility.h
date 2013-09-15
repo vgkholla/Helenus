@@ -31,6 +31,16 @@ class Utility {
 		return str;
 	}
 
+	static int isEscaped(string str, size_t pos) {
+		int i = 0;
+		while(str[pos - 1] == '\\'){
+			i++;
+			pos--;
+		}
+
+		return i % 2;
+	}
+
 };
 
 #endif

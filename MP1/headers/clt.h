@@ -98,12 +98,12 @@ class CommandLineTools {
 		string suffix = "";
 		//find if we the $
 		identifierPos = cmd.find(END_ID);
-		if(identifierPos == string::npos) {
-			suffix = ".*:";
-		} else {
+		if(identifierPos != string::npos && !Utility::isEscaped(cmd, identifierPos)) {
 			//rip the $ out
 			cmd = cmd.substr(0, identifierPos) + cmd.substr(identifierPos + 1, cmd.length());
 			suffix = ":";
+		} else {
+			suffix = ".*:";
 		}
 
 		return cmd + suffix;
@@ -121,12 +121,12 @@ class CommandLineTools {
 		string prefix = "";
 		//find if we the $
 		identifierPos = cmd.find(START_ID);
-		if(identifierPos == string::npos) {
-			prefix = ":.*";
-		} else {
+		if(identifierPos != string::npos && !Utility::isEscaped(cmd, identifierPos) ) {
 			//rip the ^ out
 			cmd = cmd.substr(0, identifierPos) + cmd.substr(identifierPos + 1, cmd.length());
 			prefix = ":";
+		} else {
+			prefix = ":.*";
 		}
 
 		//find the last space
@@ -137,19 +137,57 @@ class CommandLineTools {
 		return cmd;
 	}
 
+	static string ripQuotes(string str) {
+		//cout<<"Position of quote: " << str.find('\"') <<endl;
+		size_t pos = str.find('\"');
+		while(  pos != string::npos ) {
+			//if(!Utility::isEscaped(str, pos)) {
+				if(pos + 1 < str.length()) {
+					str = str.substr(0, pos) + str.substr(pos + 1, str.length());
+				} else {
+					str = str.substr(0, pos);
+				}
+			//}
+			pos = str.find('\"');
+		}
+		//cout<<"Position of quote: " << str.find('\'') <<endl;
+		pos = str.find('\'');
+		while(pos != string::npos ) {
+			//if(!Utility::isEscaped(str, pos)) {
+				if(pos + 1 < str.length()) {
+					str = str.substr(0, pos) + str.substr(pos + 1, str.length());
+				} else {
+					str = str.substr(0, pos);
+				}
+			//}
+			pos = str.find('\'');
+		}
+
+		return str;
+	}
+
+	static string addQuotes(string str) {
+		size_t pos = str.find_last_of(" ");
+		str = str.substr(0, pos + 1) + '\"' + str.substr(pos + 1, str.length()) + '\"'; 
+		return str;
+	}
+
 	static string processKeyOrValue(string cmd) {
 		//trim the cmd
 		cmd = Utility::trimTrailingSpaces(cmd);
-		//cout<<"Trimmed command is: "<<cmd<<endl;
+		//rip out the quotes
+		cmd = ripQuotes(cmd);
 
-		//find if the value ideentifier is there
+		//cout<<"Trimmed and ripped command is: "<<cmd<<endl;
+
+		//find if the value identifier is there
 		size_t identifierPos = cmd.find(GREP_VAL_SPEC);
 		if(identifierPos != string::npos) {
 			//there is value identifier
-			return processValueGrep(cmd);
+			return addQuotes(processValueGrep(cmd));
 		}
 		//else its a key
-		return processKeyGrep(cmd);
+		return addQuotes(processKeyGrep(cmd));
 	
 	}
 	
