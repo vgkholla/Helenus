@@ -262,6 +262,16 @@ void* ConnectionHandler::SocketHandler(void* lp)
                 cout << "File " << filept.c_str() << " sent from  Peer ------> Client" << endl;
                 close(*ptr->sock);
             }
+            string rmcmd = "rm -rf ";
+            int i;
+            for (i = 0;i < t;i++)
+            {
+                rmcmd += filenames[i];
+                rmcmd += " ";
+            } 
+            rmcmd += " > /dev/null 2>&1";
+            details->reset();
+            CommandLineTools::executeCmd(rmcmd, details);
     	}
     }
     catch(string sockException)
