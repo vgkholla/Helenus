@@ -69,7 +69,7 @@ int main(int argc,
      */
     hsock = socket(AF_INET, SOCK_STREAM, 0);
     if(hsock == -1){
-        printf("Error initializing socket %d\n",errno);
+        cout << "Error initializing socket " << strerror(errno) << endl;
         exit(1);
     }
     
@@ -78,7 +78,7 @@ int main(int argc,
         
     if( (setsockopt(hsock, SOL_SOCKET, SO_REUSEADDR, (char*)p_int, sizeof(int)) == -1 )||
         (setsockopt(hsock, SOL_SOCKET, SO_KEEPALIVE, (char*)p_int, sizeof(int)) == -1 ) ){
-        printf("Error setting options %d\n",errno);
+        cout << "Error setting socket options " << strerror(errno) << endl;
         free(p_int);
         exit(1);
     }
@@ -90,110 +90,99 @@ int main(int argc,
     memset(&(my_addr.sin_zero), 0, 8);
     my_addr.sin_addr.s_addr = inet_addr(host_name.c_str());
 
+    cout << "Connecting to Bugsy Logging System " << endl;
+
     if( connect( hsock, (struct sockaddr*)&my_addr, sizeof(my_addr)) == -1 ){
         if((err = errno) != EINPROGRESS){
-            fprintf(stderr, "Error connecting socket %s\n", strerror(errno));
+            cout << "Error connecting socket " << strerror(errno) << endl;
             exit(1);
         }
     }
 
-    //Now lets do the client related stuff
-
     buffer_len = 1024;
-
     memset(buffer, '\0', buffer_len);
 
-    printf("Enter some text to send to the server (press enter)\n");
+    /* Take command from the user */
+    cout << "Enter the command to be sent to the server (press enter)" << endl;
     if(cmd.empty())
         cmd = CommandLineTools::showAndHandlePrompt(1);
     time_t start = time(0);
-    //fgets(buffer, 1024, stdin);
     strcat(buffer, "client@");
     strcat(buffer, cmd.c_str());
     buffer[strlen(buffer)]='\0';
     
     if( (bytecount=send(hsock, buffer, strlen(buffer),0))== -1){
-        fprintf(stderr, "Error sending data %d\n", errno);
+        cout << "Error sending command to server " << strerror(errno) << endl;
         exit(1);
     }
-    printf("Sent bytes %d\n", bytecount);
 
     string filename;
     filename = "FinalOutput";
     const char* fr_name = filename.c_str();
     FILE *fr = fopen(fr_name, "a");
-    if(fr == NULL)
-        printf("File %s Cannot be opened file on server.\n", fr_name);
+    if(fr == NULL) {
+        cout << "File " << fr_name << " Cannot be opened" << endl;
+        exit(1);
+    }
     else
     {
+        /* Receive the file size from the server
+           and then receive the full file
+         */
         bzero(revbuf, SIZE);
         int fr_block_sz = 0;
         std::string size;
         int count = 0;
         int filesize= 0;
         int rcv_filesize = 0;
+ 
+        /* Receive file size */
         if((count = recv(hsock, size.c_str(), SIZE, 0))== -1){
-            fprintf(stderr, "Error receiving file size %s\n", strerror(errno));
+            cout << "Error receiving file size from server" << strerror(errno) << endl;
             exit(1);
         }
         filesize = atoi(size.c_str());
         int write_sz = fwrite(size.c_str(), sizeof(char), count, fr);
         if(write_sz < fr_block_sz)
         {
-            printf("File write failed on server.\n");
+            cout << "File write failed" << endl;
+            exit(1);
         }
         rcv_filesize += fr_block_sz;
         bzero(revbuf, SIZE);
 
-        cout << "FILE SIZE RETURNED " << filesize << "SOCKET NO" << hsock << std::endl;
-
+        cout << "FILE SIZE RETURNED " << filesize << std::endl;
+        /* Start receiving the file */
         while((fr_block_sz = recv(hsock, revbuf, SIZE, 0)) >  0)
         {
-            //cout<<"Received " << fr_block_sz << std::endl;
             write_sz = fwrite(revbuf, sizeof(char), fr_block_sz, fr);
             if(write_sz < fr_block_sz)
             {
-                printf("File write failed on server.\n");
+                cout << "File write failed " << endl;
+                exit(1);
             }
             bzero(revbuf, SIZE);
             rcv_filesize += fr_block_sz;
-            //cout << "FILE SIZE RECEIVED " << rcv_filesize << "ACTUAL SIZE " << filesize << std::endl;
             if (rcv_filesize >= filesize)
             {
                 break;
             }
         }
-/*
-        bzero(revbuf, SIZE);
-        int fr_block_sz = 0;
-        while((fr_block_sz = recv(hsock, revbuf, SIZE, 0)) > 0)
-        {
-            int write_sz = fwrite(revbuf, sizeof(char), fr_block_sz, fr);
-            if(write_sz < fr_block_sz)
-            {
-                printf("File write failed on server.\n");
-            }
-            bzero(revbuf, SIZE);
-            if (fr_block_sz == 0 || fr_block_sz != SIZE)
-            {
-                break;
-            }
-        }*/
         if(fr_block_sz < 0)
         {
             if (errno == EAGAIN)
             {
-                printf("recv() timed out.\n");
+                cout << "File recv timed out" << endl;
             }
             else
             {
-                fprintf(stderr, "recv() failed due to errno = %d\n", errno);
+                cout << "File recv failed due to errno " << strerror(errno) << endl;
                 exit(1);
             }
         }
         time_t end = time(0);
         cout<<"Time taken: " << end -start <<endl;
-        printf("Ok received from client!\n");
+        cout << "Log files received" << endl;
         fclose(fr);
     }
 
