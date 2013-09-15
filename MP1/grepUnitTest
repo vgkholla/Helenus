@@ -9,8 +9,8 @@ LOG_BASE_LOCATION=/tmp/ag/
 LOG_PREFIX=machine.
 LOG_SUFFIX=.log
 
-SERVER_ADDRESS=127.0.0.1
-SERVER_PORT=45000
+SERVER_ADDRESS=192.17.11.51
+SERVER_PORT=45002
 
 ips=(127.0.0.1 127.0.0.1 127.0.0.1 127.0.0.1)
 
@@ -32,7 +32,7 @@ then
 		echo "Creating $LOG_FILE_NAME.."
 		
 		#add random lines
-		./createLogFile $LOG_INDEX $LOG_INDEX K
+		./unitTesting/createLogFile $LOG_INDEX $LOG_INDEX K
 		
 		#insert some known line
 		echo "key1:value1" >> $LOG_FILE_NAME
@@ -50,7 +50,7 @@ fi
 failed="false"
 
 #the grep commands we are going to run
-greps=( "grep key1.*: | grep :.*va.*1" "grep key2.*: | grep :.*va.*2" "grep key3.*: | grep :.*va.*3")
+greps=( "grep --key key1 | grep --value va.*1" "grep --key key2 | grep --value va.*2" "grep --key key3 | grep --value va.*3")
 t=1
 
 for cmd in "${greps[@]}"
@@ -58,13 +58,13 @@ do
 	echo "Running $cmd"
 
 	#run the client and server here and get the result. (which i'm expecting to be at ../FinalOutput)
-	../client --dst $SERVER_ADDRESS --port $SERVER_PORT --command "$cmd"
+	./client --dst $SERVER_ADDRESS --port $SERVER_PORT --command "$cmd"
 
 	#now check the output
-	EXPECTED_OUTPUT_FILE=expectedOutput_$t
-	ACTUAL_OUTPUT_FILE=../FinalOutput
+	EXPECTED_OUTPUT_FILE=unitTesting/expectedOutput_$t
+	ACTUAL_OUTPUT_FILE=FinalOutput
 	SORTED_SUFFIX=.sorted
-	OUTPUT_LINE_GREP_EXPRESSION_1="Output follows:"
+	OUTPUT_LINE_GREP_EXPRESSION_1="Output follows"
 	OUTPUT_LINE_GREP_EXPRESSION_2="Output of command from machine"
 
 	if [ "$CREATE_EXPECTED_OUTPUT_FILE" == "true" ]
@@ -76,7 +76,7 @@ do
 	fi
 
 	#strip the tags from the received output and sort it
-	grep -v "$OUTPUT_LINE_GREP_EXPRESSION_1" $ACTUAL_OUTPUT_FILE | grep -v "$OUTPUT_LINE_GREP_EXPRESSION_2" $ACTUAL_OUTPUT_FILE  | sort > $ACTUAL_OUTPUT_FILE$SORTED_SUFFIX
+	grep -v "$OUTPUT_LINE_GREP_EXPRESSION_1" $ACTUAL_OUTPUT_FILE | grep -v "$OUTPUT_LINE_GREP_EXPRESSION_2" | sort > $ACTUAL_OUTPUT_FILE$SORTED_SUFFIX
 	sort $EXPECTED_OUTPUT_FILE > $EXPECTED_OUTPUT_FILE$SORTED_SUFFIX
 
 	diff $ACTUAL_OUTPUT_FILE$SORTED_SUFFIX $EXPECTED_OUTPUT_FILE$SORTED_SUFFIX
@@ -84,10 +84,14 @@ do
 	if [ $? != 0 ]
 	then
 		failed="true"
-		break
 	fi
 
 	rm -rf $ACTUAL_OUTPUT_FILE $ACTUAL_OUTPUT_FILE$SORTED_SUFFIX $EXPECTED_OUTPUT_FILE$SORTED_SUFFIX machine.* > /dev/null 2>&1
+
+	if [ "$failed" == "true" ]
+	then
+		break
+	fi
 	t=`expr $t + 1`
 done
 
