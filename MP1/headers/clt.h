@@ -84,6 +84,11 @@ class CommandLineTools {
 		return cmd;
 	}
 
+	/**
+	 * [processes the key part of the grep]
+	 * @param  cmd [the command]
+	 * @return     [processed return]
+	 */
 	static string processKeyGrep(string cmd) {
 		//find the identifier
 		size_t identifierPos = cmd.find(GREP_KEY_SPEC);
@@ -96,10 +101,10 @@ class CommandLineTools {
 		//cout<<"Commmand without custom identifiers is: "<<cmd<<endl;
 		//process it
 		string suffix = "";
-		//find if we the $
+		//find if we have the $
 		identifierPos = cmd.find(END_ID);
 		if(identifierPos != string::npos && !Utility::isEscaped(cmd, identifierPos)) {
-			//rip the $ out
+			//rip the $ out if its not escaped
 			cmd = cmd.substr(0, identifierPos) + cmd.substr(identifierPos + 1, cmd.length());
 			suffix = ":";
 		} else {
@@ -109,6 +114,11 @@ class CommandLineTools {
 		return cmd + suffix;
 	}
 
+	/**
+	 * [Process the value part of the grep]
+	 * @param  cmd [the command]
+	 * @return     [the processed command]
+	 */
 	static string processValueGrep(string cmd) {
 		//find the identifier
 		size_t identifierPos = cmd.find(GREP_VAL_SPEC);
@@ -119,10 +129,10 @@ class CommandLineTools {
 		//cout<<"Commmand without custom identifiers is: "<<cmd<<endl;
 		//process it
 		string prefix = "";
-		//find if we the $
+		//find if we have the ^
 		identifierPos = cmd.find(START_ID);
 		if(identifierPos != string::npos && !Utility::isEscaped(cmd, identifierPos) ) {
-			//rip the ^ out
+			//rip the ^ out if its not escaped
 			cmd = cmd.substr(0, identifierPos) + cmd.substr(identifierPos + 1, cmd.length());
 			prefix = ":";
 		} else {
@@ -137,8 +147,14 @@ class CommandLineTools {
 		return cmd;
 	}
 
+	/**
+	 * [rips out the quotes]
+	 * @param  str [the string]
+	 * @return     [string without quotes]
+	 */
 	static string ripQuotes(string str) {
 		//cout<<"Position of quote: " << str.find('\"') <<endl;
+		//successively search for double quotes and rip them out
 		size_t pos = str.find('\"');
 		while(  pos != string::npos ) {
 			//if(!Utility::isEscaped(str, pos)) {
@@ -151,6 +167,7 @@ class CommandLineTools {
 			pos = str.find('\"');
 		}
 		//cout<<"Position of quote: " << str.find('\'') <<endl;
+		//successively search for quotes and rip them out
 		pos = str.find('\'');
 		while(pos != string::npos ) {
 			//if(!Utility::isEscaped(str, pos)) {
@@ -166,12 +183,22 @@ class CommandLineTools {
 		return str;
 	}
 
+	/**
+	 * [add quotes to the commands last word]
+	 * @param  str [the string]
+	 * @return     [string with quotes on the last word]
+	 */
 	static string addQuotes(string str) {
 		size_t pos = str.find_last_of(" ");
 		str = str.substr(0, pos + 1) + '\"' + str.substr(pos + 1, str.length()) + '\"'; 
 		return str;
 	}
 
+	/**
+	 * [processes the command based on whether it has key or value]
+	 * @param  cmd [the command]
+	 * @return     [the processed command]
+	 */
 	static string processKeyOrValue(string cmd) {
 		//trim the cmd
 		cmd = Utility::trimTrailingSpaces(cmd);
@@ -191,7 +218,11 @@ class CommandLineTools {
 	
 	}
 	
-
+	/**
+	 * [processes the command]
+	 * @param  cmd [the command]
+	 * @return     [processed output]
+	 */
 	static string processKeyAndValue(string cmd) {
 		//see if we have a pipe
 		size_t pipePos = cmd.find('|');

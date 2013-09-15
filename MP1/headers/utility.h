@@ -22,6 +22,11 @@ class Utility {
 		return static_cast<ostringstream*>( &(ostringstream() << num) )->str();
 	} 
 
+	/**
+	 * [trims out trailing spaces]
+	 * @param  str [input string]
+	 * @return     [string without trailing spaces]
+	 */
 	static string trimTrailingSpaces(string str) {
 		size_t strlength = str.length();
 		while(str[strlength - 1] == ' ' || str[strlength - 1] == '\t') {
@@ -31,6 +36,12 @@ class Utility {
 		return str;
 	}
 
+	/**
+	 * [check if character is escaped]
+	 * @param  str [the string]
+	 * @param  pos [the position of character]
+	 * @return     [whether the character is escaped or not]
+	 */
 	static int isEscaped(string str, size_t pos) {
 		int i = 0;
 		while(str[pos - 1] == '\\'){
