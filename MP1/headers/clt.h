@@ -21,6 +21,13 @@ using namespace std;
 #define O_FILE_NAME_PREFIX "cmd."
 #define O_FILE_NAME_SUFFIX ".out"
 #define OUTPUT_FILE_BASE_PATH "/tmp/ag/"
+#define GREP_KEY_SPEC "--key"
+#define GREP_KEY_LENGTH 5
+#define GREP_VAL_SPEC "--value"
+#define GREP_VAL_LENGTH 7
+#define END_ID "$"
+#define START_ID "^"
+
 
 class CommandResultDetails{
 
@@ -50,7 +57,7 @@ class CommandLineTools {
 	 */
 	static void tagFile(int machineID, string filePath, CommandResultDetails *details) {
 		//first build the tag command for tagging the file
-		string tagCmd = "echo **Output of command from machine [" + Utility::intToString(machineID) + "]** > " + filePath + " 2>&1";
+		string tagCmd = "echo **Output of command from machine [" + Utility::intToString(machineID) + "]** > " + filePath + " 2>/dev/null";
 		//tag it!!
 		executeCmd(tagCmd, details);
 	}
@@ -77,6 +84,97 @@ class CommandLineTools {
 		return cmd;
 	}
 
+	static string processKeyGrep(string cmd) {
+		//find the identifier
+		size_t identifierPos = cmd.find(GREP_KEY_SPEC);
+		
+		if(identifierPos != string::npos) {
+			//rip it out
+			cmd = cmd.substr(0, identifierPos) + cmd.substr(identifierPos + GREP_KEY_LENGTH + 1, cmd.length());
+		}
+
+		//cout<<"Commmand without custom identifiers is: "<<cmd<<endl;
+		//process it
+		string suffix = "";
+		//find if we the $
+		identifierPos = cmd.find(END_ID);
+		if(identifierPos == string::npos) {
+			suffix = ".*:";
+		} else {
+			//rip the $ out
+			cmd = cmd.substr(0, identifierPos) + cmd.substr(identifierPos + 1, cmd.length());
+			suffix = ":";
+		}
+
+		return cmd + suffix;
+	}
+
+	static string processValueGrep(string cmd) {
+		//find the identifier
+		size_t identifierPos = cmd.find(GREP_VAL_SPEC);
+		
+		//rip it out
+		cmd = cmd.substr(0, identifierPos) + cmd.substr(identifierPos + GREP_VAL_LENGTH + 1, cmd.length());
+	
+		//cout<<"Commmand without custom identifiers is: "<<cmd<<endl;
+		//process it
+		string prefix = "";
+		//find if we the $
+		identifierPos = cmd.find(START_ID);
+		if(identifierPos == string::npos) {
+			prefix = ":.*";
+		} else {
+			//rip the ^ out
+			cmd = cmd.substr(0, identifierPos) + cmd.substr(identifierPos + 1, cmd.length());
+			prefix = ":";
+		}
+
+		//find the last space
+		size_t lastSpace = cmd.find_last_of(' ');
+		//insert prefix just before the search text starts
+		cmd = cmd.substr(0, lastSpace + 1) + prefix + cmd.substr(lastSpace + 1, cmd.length());
+
+		return cmd;
+	}
+
+	static string processKeyOrValue(string cmd) {
+		//trim the cmd
+		cmd = Utility::trimTrailingSpaces(cmd);
+		//cout<<"Trimmed command is: "<<cmd<<endl;
+
+		//find if the value ideentifier is there
+		size_t identifierPos = cmd.find(GREP_VAL_SPEC);
+		if(identifierPos != string::npos) {
+			//there is value identifier
+			return processValueGrep(cmd);
+		}
+		//else its a key
+		return processKeyGrep(cmd);
+	
+	}
+	
+
+	static string processKeyAndValue(string cmd) {
+		//see if we have a pipe
+		size_t pipePos = cmd.find('|');
+
+		//if we dont, process and return
+		if(pipePos == string::npos) {
+			//cout<<"Pipe not found"<<endl;
+			return processKeyOrValue(cmd);
+		}
+
+		//process the first part
+		string firstPart = processKeyOrValue(cmd.substr(0, pipePos));
+		//cout<<"First Part is: "<<firstPart<<endl;
+		//process the second part
+		string secondPart = processKeyOrValue(cmd.substr(pipePos + 1, cmd.length()));
+		//cout<<"Second Part is: "<<secondPart<<endl;
+		//send final command
+		return firstPart + " |" + secondPart;
+
+	}
+
 	/**
 	 * [parses the grep command and gives a file name to grep from]
 	 * @param  machineID [the machine ID]
@@ -88,6 +186,9 @@ class CommandLineTools {
 		if(cmd.find("grep") == string::npos) {
 			return cmd;
 		}
+		//cout<<"Command before processing: "<<cmd<<endl;
+		cmd = processKeyAndValue(cmd);
+		//cout<<"Returned Command is: "<<cmd<<endl;
 
 		//the log file path
 		string logFilePath = ErrorLog::getLogPath(machineID);
@@ -114,8 +215,8 @@ class CommandLineTools {
 
 		cmd +=" >> " + filePath; //append sign here because the tag command will take care of stripping out the old contents    
 
-		//add 2>&1 to command to stream errors to the file too
-		cmd += " 2>&1";
+		//add 2>/dev/null to command to ignore errors
+		cmd += " 2>/dev/null";
 		//cmd has been totally built now
 
 		//tag the file
@@ -152,7 +253,7 @@ class CommandLineTools {
 			cmdToMerge += files[i] + " ";
 		}
 
-		cmdToMerge += " > " + mergeFilePath + " 2>&1";
+		cmdToMerge += " > " + mergeFilePath + " 2>/dev/null";
 		//cout<<endl<<"The merge command is: "<<cmdToMerge<<endl;
 		executeCmd(cmdToMerge, details);
 		return mergeFilePath;

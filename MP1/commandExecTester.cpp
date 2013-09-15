@@ -61,8 +61,9 @@ void testStreamOutput(string cmd) {
 
 void testParse(string cmd) {
 	cmd = CommandLineTools::parseGrepCmd(1, cmd);
-	CommandResultDetails *details = new CommandResultDetails();
-	CommandLineTools::tagAndExecuteCmd(1, cmd, details);
+	cout<<"Final Command: "<<cmd<<endl;
+	//CommandResultDetails *details = new CommandResultDetails();
+	//CommandLineTools::tagAndExecuteCmd(1, cmd, details);
 
 }
 
@@ -73,13 +74,15 @@ int main() {
 
 	//do any string manipulation on command here
 
-	testMerge(cmd);
+	//testMerge(cmd);
 	
 	//testScp(cmd);
 	
 	//testStreamOutput(cmd);
-	
-	//testParse(cmd);
+	while(cmd.compare("exit") != 0) {
+		testParse(cmd);
+		cmd = CommandLineTools::showAndHandlePrompt(1);
+	}
 
 	return 0;
 }
