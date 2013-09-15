@@ -13,10 +13,46 @@
 
 using namespace std;
 
-int main(){
+int main(int argc,
+         char **argv){
 
-    int host_port= 45001;
-    string host_name="192.17.11.22";
+
+    if (argc < 5) {
+        std::cerr << "Usage: " << argv[0] << " --dst DEST_IP --port DEST_PORT --command COMMAND" << std::endl;
+        return 1;
+    }
+    int host_port;
+    string host_name;
+    string cmd;
+    /* Receive Command Line Input for dest IP
+       dest port and optional command
+     */
+    for (int i = 1; i < argc; ++i) {
+        if (std::string(argv[i]) == "--dst") {
+            if (i + 1 < argc) { 
+                host_name = argv[++i];
+            } else { 
+                  std::cerr << "--dst option requires one argument." << std::endl;
+                return 1;
+            }
+        }
+        else if (std::string(argv[i]) == "--port") {
+            if (i + 1 < argc) { 
+                host_port = atoi(argv[++i]); 
+            } else { 
+                  std::cerr << "--port option requires one argument." << std::endl;
+                return 1;
+            }
+        }
+        else if (std::string(argv[i]) == "--command") {
+            if (i + 1 < argc) { 
+                cmd = argv[++i]; 
+            } else { 
+                  std::cerr << "--command option requires one argument." << std::endl;
+                return 1;
+            }
+        }
+    }
 
     struct sockaddr_in my_addr;
 
@@ -28,7 +64,9 @@ int main(){
     int hsock;
     int *p_int;
     int err;
-
+    /* Open socket to connect to
+       Bugsy Inc logging system
+     */
     hsock = socket(AF_INET, SOCK_STREAM, 0);
     if(hsock == -1){
         printf("Error initializing socket %d\n",errno);
@@ -66,7 +104,8 @@ int main(){
     memset(buffer, '\0', buffer_len);
 
     printf("Enter some text to send to the server (press enter)\n");
-    string cmd = CommandLineTools::showAndHandlePrompt(1);
+    if(cmd.empty())
+        cmd = CommandLineTools::showAndHandlePrompt(1);
     time_t start = time(0);
     //fgets(buffer, 1024, stdin);
     strcat(buffer, "client@");
@@ -78,13 +117,6 @@ int main(){
         exit(1);
     }
     printf("Sent bytes %d\n", bytecount);
-
-
-
-
-
-
-
 
     string filename;
     filename = "FinalOutput";
