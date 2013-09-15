@@ -1,10 +1,10 @@
 #! /bin/bash
 
 #parameters
-STATIC_LOGS = true
-CREATE_EXPECTED_OUTPUT_FILE = false
+STATIC_LOGS=true
+CREATE_EXPECTED_OUTPUT_FILE=false
 
-NO_OF_MACHINES=4
+NO_OF_MACHINES=3
 LOG_BASE_LOCATION=/tmp/ag/
 LOG_PREFIX=machine.
 LOG_SUFFIX=.log
@@ -20,7 +20,7 @@ do
 	echo $ip
 done
 
-if [STATIC_LOGS == "false" ]
+if [ "$STATIC_LOGS" == "false" ]
 then
 	#create the required log files
 
@@ -47,38 +47,55 @@ then
 	done
 fi
 
+failed="false"
+
 #the grep commands we are going to run
-greps=( "grep key1.*: | grep :.*va.*1" "grep key1.*: | grep :.*va.*1" "grep key1.*: | grep :.*va.*1")
+greps=( "grep key1.*: | grep :.*va.*1" "grep key2.*: | grep :.*va.*2" "grep key3.*: | grep :.*va.*3")
+t=1
 
-#run the client and server here and get the result. (which i'm expecting to be at ../FinalOutput)
+for cmd in "${greps[@]}"
+do
+	echo "Running $cmd"
 
+	#run the client and server here and get the result. (which i'm expecting to be at ../FinalOutput)
+	../client --dst $SERVER_ADDRESS --port $SERVER_PORT --command "$cmd"
 
-#now check the output
-EXPECTED_OUTPUT_FILE=$LOG_BASE_LOCATIONexpectedOutput.out
-ACTUAL_OUTPUT_FILE=../FinalOutput
-SORTED_SUFFIX=.sorted
-OUTPUT_LINE_GREP_EXPRESSION_1="Output follows:"
-OUTPUT_LINE_GREP_EXPRESSION_2="Output of command from machine"
+	#now check the output
+	EXPECTED_OUTPUT_FILE=expectedOutput_$t
+	ACTUAL_OUTPUT_FILE=../FinalOutput
+	SORTED_SUFFIX=.sorted
+	OUTPUT_LINE_GREP_EXPRESSION_1="Output follows:"
+	OUTPUT_LINE_GREP_EXPRESSION_2="Output of command from machine"
 
-if [CREATE_EXPECTED_OUTPUT_FILE == "true" ]
-then
-	for(( i=0; i<$NO_OF_MACHINES; i++))
-	do
-		echo "key1:value1" >> $EXPECTED_OUTPUT_FILE
-	done
-fi
+	if [ "$CREATE_EXPECTED_OUTPUT_FILE" == "true" ]
+	then
+		for(( i=0; i<$NO_OF_MACHINES; i++))
+		do
+			echo "key1:value1" >> $EXPECTED_OUTPUT_FILE
+		done
+	fi
 
-#strip the tags from the received output and sort it
-grep -v "$OUTPUT_LINE_GREP_EXPRESSION_1" $ACTUAL_OUTPUT_FILE | grep -v "$OUTPUT_LINE_GREP_EXPRESSION_2" $ACTUAL_OUTPUT_FILE  | sort > $ACTUAL_OUTPUT_FILE$SORTED_SUFFIX
-sort $EXPECTED_OUTPUT_FILE > $EXPECTED_OUTPUT_FILE$SORTED_SUFFIX
+	#strip the tags from the received output and sort it
+	grep -v "$OUTPUT_LINE_GREP_EXPRESSION_1" $ACTUAL_OUTPUT_FILE | grep -v "$OUTPUT_LINE_GREP_EXPRESSION_2" $ACTUAL_OUTPUT_FILE  | sort > $ACTUAL_OUTPUT_FILE$SORTED_SUFFIX
+	sort $EXPECTED_OUTPUT_FILE > $EXPECTED_OUTPUT_FILE$SORTED_SUFFIX
 
-diff $ACTUAL_OUTPUT_FILE$SORTED_SUFFIX $EXPECTED_OUTPUT_FILE$SORTED_SUFFIX
+	diff $ACTUAL_OUTPUT_FILE$SORTED_SUFFIX $EXPECTED_OUTPUT_FILE$SORTED_SUFFIX
 
-if [ $? -eq 0 ]
+	if [ $? != 0 ]
+	then
+		failed="true"
+		break
+	fi
+
+	rm -rf $ACTUAL_OUTPUT_FILE $ACTUAL_OUTPUT_FILE$SORTED_SUFFIX $EXPECTED_OUTPUT_FILE$SORTED_SUFFIX machine.* > /dev/null 2>&1
+	t=`expr $t + 1`
+done
+
+if [ "$failed" == "false" ]
 then
 	echo "Unit test succeeded!"
 else
 	echo "Unit test failed!"
 fi
 
-rm -rf $EXPECTED_OUTPUT_FILE $ACTUAL_OUTPUT_FILE $ACTUAL_OUTPUT_FILE$SORTED_SUFFIX $EXPECTED_OUTPUT_FILE$SORTED_SUFFIX
+
