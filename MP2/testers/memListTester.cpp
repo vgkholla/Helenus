@@ -32,6 +32,8 @@ void createList4(MembershipList *memList) {
 
 int main() {
 
+	//cout<<MembershipList::getNetworkID("192.16.17.11")<<endl;
+
 	int machine1ID = 1;
 	int machine2ID = 2;
 	int machine3ID = 3;
@@ -76,6 +78,7 @@ int main() {
 	memList4->printMemList();
 	cout<<endl;
 
+	
 	memList1->updateMembershipList(memList2, &errCode);
 	memList1->updateMembershipList(memList3, &errCode);
 	memList1->updateMembershipList(memList4, &errCode);
@@ -86,6 +89,10 @@ int main() {
 	cout<<"Modified List 1: "<<endl;
 	memList1->printMemList();
 
+	memList2->incrementHeartbeat(1, &errCode);
+	memList2->requestRetirement(&errCode);
+
+
 	sleep(3);
 	cout<<"Current time: "<<time(0)<<endl;
 	memList1->incrementHeartbeat(1, &errCode);
@@ -94,6 +101,8 @@ int main() {
 	memList1->updateMembershipList(memList3, &errCode);
 	memList1->updateMembershipList(memList4, &errCode);
 	memList1->processList(&errCode);
+	cout<<"Modified List 1: "<<endl;
+	memList1->printMemList();
 
 	sleep(3);
 	memList1->incrementHeartbeat(1, &errCode);
@@ -101,6 +110,14 @@ int main() {
 	memList1->updateMembershipList(memList2, &errCode);
 	memList1->updateMembershipList(memList3, &errCode);
 	memList1->updateMembershipList(memList4, &errCode);
+	memList1->processList(&errCode);
+
+	cout<<"Current time: "<<time(0)<<endl;
+	cout<<"Modified List 1: "<<endl;
+	memList1->printMemList();
+
+	sleep(3);
+	memList1->incrementHeartbeat(1, &errCode);
 	memList1->processList(&errCode);
 
 	cout<<"Current time: "<<time(0)<<endl;

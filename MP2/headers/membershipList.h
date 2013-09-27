@@ -323,7 +323,7 @@ class MembershipList {
 	 */
 	void printMemList() {
 		for(int i =0 ; i < memList.size(); i++ ) {
-			cout<<"ID: "<< memList[i].id <<" Heartbeat: "<< memList[i].heartbeat<<" Timestamp: "<<memList[i].localTimestamp<<endl;
+			cout<<"ID: "<< memList[i].id <<" Heartbeat: "<< memList[i].heartbeat<<" Timestamp: "<<memList[i].localTimestamp<<" Failed: "<<memList[i].failed<<" Leaving: "<<memList[i].leaving<<" Failure Timestamp: "<<memList[i].failureTimestamp<<endl;
 		}
 	}
 
@@ -449,6 +449,62 @@ class MembershipList {
 		}
 		return status;
 
+	}
+
+	/**
+	 * [used by a machine which wants to volunatarily leave the group]
+	 * @param  errCode [space to store error code]
+	 * @return         [status of request]
+	 */
+	int requestRetirement(int *errCode) {
+		//bail if there is already an error
+		if(*errCode != NO_ERROR) {
+			string msg = "Unable to execute requestRetirement(). A previous error with error code: " + Utility::intToString(*errCode) + " exists";
+			logger->logError(ERROR_ALREADY_EXISTS, msg , errCode);
+			return FAILURE;
+		}
+		int status = SUCCESS;
+
+		int i = 0;
+		int found = 0;
+		//find yourself and put in a request for retirement. 
+		//********make sure to call incrementHeartbeat before requesting to retire. Otherwise the others might treat you as failed rather than retired******
+		for(i = 0; i < memList.size(); i++){
+			try {
+				MembershipDetails *localEntry = &memList.at(i);
+				if(networkID.compare(localEntry->id) == 0){
+					localEntry->leaving = 1; //requests retirement
+					found = 1;
+					break;
+				}
+			}
+			catch (exception& e){
+				//the index is probably not available. Log it
+				string msg = "Accessing index in vector failed in requestRetirement(). Failed index: " + Utility::intToString(i);
+				logger->logError(INDEX_ACCESS_FAILED, msg , errCode);
+				
+				//whether the logger failed or not, the caller of this function only needs to know that accessing an index failed
+				*errCode = INDEX_ACCESS_FAILED;
+				status = FAILURE;
+				break;
+			}
+		}
+
+		//we didn't find ourselves!! identity crisis!! NOOOOOOOOOOOOOO!!!!!
+		if(status != FAILURE && found == 0) {
+			*errCode = SELF_ENTRY_NOT_FOUND;
+			status = FAILURE;
+		}
+		return status;
+	}
+
+	/**
+	 * [gets the network ID. Will differ between reincarnations]
+	 * @param  ip [the ip address]
+	 * @return    [the network ID]
+	 */
+	static string getNetworkID(string ip) {
+		return ip + ":" + Utility::intToString(time(0));
 	}
 	
 };
