@@ -34,13 +34,6 @@ namespace P2P
 
     class ConnectionHandler: public Timer
     {
-        friend class boost::serialization::access;
-        std::list<std::string> names;
-        template<class Archive>
-        void serialize(Archive & ar, const unsigned int version)
-        {
-            ar & names;
-        }
         private:
             /** Peer Owner. */
             Peer      *owner;

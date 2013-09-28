@@ -26,43 +26,16 @@
 
 #include "ConnectionHandler.h"
 #include "Timer.h"
+#include "membershipList.h"
+#include "logger.h"
 //#include "headers/clt.h"
 
-#define BUFLEN 2024
+#define BUFLEN 10000
 #define SERVER_PORT 45000
 using namespace std;
 using namespace P2P;
 
 std::stringstream ss; 
-
-class person 
-{ 
-public: 
-  person() 
-  { 
-  } 
-
-  person(int age) 
-    : age_(age) 
-  { 
-  } 
-
-  int age() const 
-  { 
-    return age_; 
-  } 
-
-private: 
-  friend class boost::serialization::access; 
-
-  template <typename Archive> 
-  void serialize(Archive &ar, const unsigned int version) 
-  { 
-    ar & age_; 
-  } 
-
-  int age_; 
-};
 
 ConnectionHandler::ConnectionHandler(string src,
                                      int machineno,
@@ -82,15 +55,8 @@ ConnectionHandler::ConnectionHandler(string src,
     string address;
     string port;
     std::size_t pos;
-    names.push_back("alok");
-    names.push_back("pallavi");
-    names.push_back("ap");
 
-//    pos = src.find(":");
-//    address = src.substr(0,pos);
-//    port = src.substr(pos+1,src.length() - pos);
     address = src;
-
     machine_no = machineno;
     cout << "Machine No. " << machine_no << " Address" << address << " Port " << port << std::endl;
 
@@ -165,18 +131,18 @@ void* ConnectionHandler::SocketHandler(void* lp)
     {
         while(1)
         {
-            if (recvfrom(ptr->sock, recvstr.c_str(), sizeof(person), 0, (struct sockaddr*)&cli_addr, &slen)==-1)
+            if (recvfrom(ptr->sock, recvstr.c_str(), sizeof(MembershipList), 0, (struct sockaddr*)&cli_addr, &slen)==-1)
             {
                 cout << "Error accepting connection " << strerror(errno) << endl;
                 throw string("error");
             }
             ss << recvstr;
             boost::archive::text_iarchive ia(ss);
-            person p;
-            ia >> p;
-            person *pp = &p;
+            MembershipList recvList;
+            ia >> recvList;
+            MembershipList *ptr = &recvList;
             ss.clear();
-  	    std::cout << pp->age() << std::endl; 
+  	    ptr->printMemList(); 
         }
     }
     catch(string sockException)
@@ -201,9 +167,12 @@ void ConnectionHandler::executeCb()
     string host_name = "127.0.0.1";
 
     boost::archive::text_oarchive oa(ss); 
-    //person p(31); 
-    person *p = new person(31);
-    oa << *p; 
+    string netId = MembershipList::getNetworkID("127.0.0.1");
+    ErrorLog *logger = new ErrorLog(machine_no);
+    MembershipList *memList = new MembershipList(machine_no, netId, logger);
+    memList->printMemList();
+
+    oa << *memList; 
     std::string mystring(ss.str());
 
     if ((sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1)
@@ -214,7 +183,7 @@ void ConnectionHandler::executeCb()
     serv_addr.sin_port = htons(45002);
     serv_addr.sin_addr.s_addr = inet_addr(host_name.c_str());
 
-    if (sendto(sockfd, mystring.c_str(), names.size(), 0, (struct sockaddr*)&serv_addr, slen)==-1)
+    if (sendto(sockfd, mystring.c_str(), strlen(mystring.c_str()), 0, (struct sockaddr*)&serv_addr, slen)==-1)
         cout << "Error Sending on socket " << strerror(errno) << std::endl; 
 
     close(sockfd);

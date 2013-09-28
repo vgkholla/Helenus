@@ -6,6 +6,11 @@
 #include <ctime>
 #include <vector>
 #include <algorithm>
+
+#include <boost/serialization/vector.hpp>
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
+
 #include "logger.h"
 #include "errorCodes.h"
 #include "utility.h"
@@ -42,6 +47,19 @@ class MembershipDetails {
 
 		failureTimestamp=0;
 	}
+        private:
+        friend class boost::serialization::access;
+
+        template <typename Archive>
+        void serialize(Archive &ar, const unsigned int version)
+        {
+            ar & id;
+            ar & heartbeat;
+            ar & localTimestamp;
+            ar & failed;
+            ar & leaving;
+            ar & failureTimestamp;
+        }
 };
 
 class MembershipList {
@@ -58,7 +76,16 @@ class MembershipList {
 	int timeToFailure; //in milliseconds
 	//the time to cleanup
 	int timeToCleanup; //in milliseconds
+        
+        friend class boost::serialization::access; 
 
+        template <typename Archive> 
+        void serialize(Archive &ar, const unsigned int version) 
+        {
+            ar & machineID;
+            ar & networkID;
+            ar & memList;
+        }
 	/**
 	 * [removes a member from the list]
 	 * @param entry [the entry to be removed]
@@ -316,6 +343,7 @@ class MembershipList {
 		updateTimeToCleanup();
 		updateTimeToFailure();
 	}
+        MembershipList() {};
 
 	//for debugging
 	/**
