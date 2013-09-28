@@ -4,6 +4,13 @@
 #include <iostream>
 #include <map>
 #include <string>
+#include <sstream>
+
+#include <boost/serialization/list.hpp>
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
+
+#include "Timer.h"
 
 using namespace std;
 
@@ -19,14 +26,21 @@ namespace P2P
       * Host and Port of peers
       */
     typedef struct _mystruct{
-        int *sock;
+        int sock;
         void* owner;
         string cmd;
         string hostAndPort;
     } mystruct;
 
-    class ConnectionHandler
+    class ConnectionHandler: public Timer
     {
+        friend class boost::serialization::access;
+        std::list<std::string> names;
+        template<class Archive>
+        void serialize(Archive & ar, const unsigned int version)
+        {
+            ar & names;
+        }
         private:
             /** Peer Owner. */
             Peer      *owner;
@@ -49,7 +63,8 @@ namespace P2P
              */
             explicit ConnectionHandler(string src,
                                        int machineno,
-                                       std::list<string> dest);
+                                       std::list<string> dest,
+                                       int time);
 
             /**
              * Destructor.
@@ -62,6 +77,9 @@ namespace P2P
   
             /** Handle File Transfer from peers */
             static void* ClientHandler(void *lp);
+
+        protected:
+            virtual void executeCb();
 
     };
 
