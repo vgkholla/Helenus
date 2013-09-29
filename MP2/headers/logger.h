@@ -23,6 +23,7 @@ using namespace std;
 #define LOG_FILE_BASE_PATH "/tmp/ag/"
 #define LOG_ERROR 1
 #define LOG_DEBUG 2
+#define LOG_NOTICE 3
 
 #define LOGGING_LEVEL LOG_DEBUG
 #define VERBOSE 1

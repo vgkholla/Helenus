@@ -46,10 +46,10 @@ int main() {
 
 	int errCode = 0;
 
-	MembershipList *memList1 = new MembershipList(machine1ID, Utility::intToString(machine1ID), logger1);
-	MembershipList *memList2 = new MembershipList(machine2ID, Utility::intToString(machine2ID), logger2);
-	MembershipList *memList3 = new MembershipList(machine3ID, Utility::intToString(machine3ID), logger3);
-	MembershipList *memList4 = new MembershipList(machine4ID, Utility::intToString(machine4ID), logger4);
+	MembershipList *memList1 = new MembershipList(machine1ID, "127.0.0.1:0", logger1);
+	MembershipList *memList2 = new MembershipList(machine2ID, "127.0.0.2:0", logger2);
+	MembershipList *memList3 = new MembershipList(machine3ID, "127.0.0.3:0", logger3);
+	MembershipList *memList4 = new MembershipList(machine4ID, "127.0.0.4:0", logger4);
 
 
 	createList1(memList1);
@@ -89,7 +89,18 @@ int main() {
 	cout<<"Modified List 1: "<<endl;
 	memList1->printMemList();
 
+	vector<string> ips;
+	memList1->getListOfMachinesToSendTo(0.5, &ips, &errCode);
+
+	cout<<"The ips are: "<<endl;
+	for(int j =0; j < ips.size(); j++) {
+		cout<<ips.at(j)<<endl;
+	}
+
+	/**
+	
 	memList2->incrementHeartbeat(1, &errCode);
+	 
 	memList2->requestRetirement(&errCode);
 
 
@@ -123,6 +134,8 @@ int main() {
 	cout<<"Current time: "<<time(0)<<endl;
 	cout<<"Modified List 1: "<<endl;
 	memList1->printMemList();
+
+	*/
 
 	return 0;
 }
