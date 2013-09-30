@@ -35,7 +35,7 @@
 using namespace std;
 using namespace P2P;
 
-std::stringstream ss; 
+//std::stringstream ss; 
 
 ConnectionHandler::ConnectionHandler(string src,
                                      int machineno,
@@ -125,23 +125,31 @@ void* ConnectionHandler::SocketHandler(void* lp)
     struct sockaddr_in cli_addr;
     int sockfd, i; 
     socklen_t slen=sizeof(cli_addr);
-    string recvstr;
+    //string recvstr;
+    int byte_count;
+    char buf[1024];
     
     try
     {
         while(1)
         {
-            if (recvfrom(ptr->sock, recvstr.c_str(), sizeof(MembershipList), 0, (struct sockaddr*)&cli_addr, &slen)==-1)
+            memset(buf, 0, 1024);
+            byte_count = recvfrom(ptr->sock, buf, 1024, 0, (struct sockaddr*)&cli_addr, &slen);
+            if(byte_count == -1)
             {
                 cout << "Error accepting connection " << strerror(errno) << endl;
                 throw string("error");
             }
-            ss << recvstr;
-            boost::archive::text_iarchive ia(ss);
+            string recvstr(buf);
+            cout << "Receving ------ " << "------ " << "Size " << byte_count <<  endl;
+            cout << endl << recvstr << endl;
+            std::stringstream ss1; 
+            ss1 << recvstr;
+            boost::archive::text_iarchive ia(ss1);
             MembershipList recvList;
             ia >> recvList;
             MembershipList *ptr = &recvList;
-            ss.clear();
+            ss1.clear();
   	    ptr->printMemList(); 
         }
     }
@@ -164,23 +172,27 @@ void ConnectionHandler::executeCb()
     struct sockaddr_in serv_addr;
     int sockfd, i, slen=sizeof(serv_addr);
     char buf[BUFLEN];
-    string host_name = "127.0.0.1";
+    string host_name = "192.168.159.131";
+    std::stringstream ss; 
 
     boost::archive::text_oarchive oa(ss); 
-    string netId = MembershipList::getNetworkID("127.0.0.1");
+    string netId = MembershipList::getNetworkID("192.168.159.128");
     ErrorLog *logger = new ErrorLog(machine_no);
     MembershipList *memList = new MembershipList(machine_no, netId, logger);
     memList->printMemList();
 
     oa << *memList; 
     std::string mystring(ss.str());
+    //std::string mystring("alok");
+ 
+    cout << "Sending size ==== " << strlen(mystring.c_str()) << "Data -----" << mystring << endl;
 
     if ((sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1)
         cout << "Error opening socket" << strerror(errno) << std::endl;
 
     bzero(&serv_addr, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(45002);
+    serv_addr.sin_port = htons(45000);
     serv_addr.sin_addr.s_addr = inet_addr(host_name.c_str());
 
     if (sendto(sockfd, mystring.c_str(), strlen(mystring.c_str()), 0, (struct sockaddr*)&serv_addr, slen)==-1)
