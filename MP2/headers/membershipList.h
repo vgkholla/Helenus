@@ -17,9 +17,28 @@
 
 using namespace std;
 
+#define IP_TIMESTAMP_SEPERATOR ':'
+
 class MembershipDetails {
 
 	private:
+
+ 	friend class boost::serialization::access;
+
+    template <typename Archive>
+    /**
+     * [serializes this calss. required for boost serialization]
+     * @param ar      [the archive name]
+     * @param version [versioning]
+     */
+    void serialize(Archive &ar, const unsigned int version) {
+        ar & id;
+        ar & heartbeat;
+        ar & localTimestamp;
+        ar & failed;
+        ar & leaving;
+        ar & failureTimestamp;
+    }
 
 	public:
 	//the network id. different on different incarnations
@@ -47,19 +66,6 @@ class MembershipDetails {
 
 		failureTimestamp=0;
 	}
-        private:
-        friend class boost::serialization::access;
-
-        template <typename Archive>
-        void serialize(Archive &ar, const unsigned int version)
-        {
-            ar & id;
-            ar & heartbeat;
-            ar & localTimestamp;
-            ar & failed;
-            ar & leaving;
-            ar & failureTimestamp;
-        }
 };
 
 class MembershipList {
@@ -77,15 +83,25 @@ class MembershipList {
 	//the time to cleanup
 	int timeToCleanup; //in milliseconds
         
-        friend class boost::serialization::access; 
+    friend class boost::serialization::access; 
 
-        template <typename Archive> 
-        void serialize(Archive &ar, const unsigned int version) 
-        {
-            ar & machineID;
-            ar & networkID;
-            ar & memList;
-        }
+    template <typename Archive> 
+    /**
+     * [function to serialize this class (for boost)]
+     * @param ar      [the archive]
+     * @param version [versioning]
+     */
+    void serialize(Archive &ar, const unsigned int version) {
+        ar & machineID;
+        ar & networkID;
+        ar & memList;
+    }
+
+
+    int getNumberOfEntriesInList() {
+    	return memList.size();
+    }
+
 	/**
 	 * [removes a member from the list]
 	 * @param entry [the entry to be removed]
@@ -343,7 +359,11 @@ class MembershipList {
 		updateTimeToCleanup();
 		updateTimeToFailure();
 	}
-        MembershipList() {};
+    
+    /**
+     * constructor for creating an empty object to hold the another list that is expected to come in
+     */
+    MembershipList() {};
 
 	//for debugging
 	/**
@@ -527,6 +547,67 @@ class MembershipList {
 	}
 
 	/**
+	 * [sends a list of ips that the message needs to be sent to]
+	 * @param  fraction [the fraction of machines the message should be sent to]
+	 * @param  ips      [space for returning the ips]
+	 * @param  errCode  [space for error code if any]
+	 * @return          [status]
+	 */
+	int getListOfMachinesToSendTo(float fraction, vector<string> *ips, int *errCode) {
+		//bail if there is already an error
+		if(*errCode != NO_ERROR) {
+			string msg = "Unable to execute getListOfMachinesToSendTo(). A previous error with error code: " + Utility::intToString(*errCode) + " exists";
+			logger->logError(ERROR_ALREADY_EXISTS, msg , errCode);
+			return FAILURE;
+		}
+
+		int status = SUCCESS;
+
+		srand(time(0));
+
+		int noOfEntries = getNumberOfEntriesInList();
+		//fraction of machines we want to send to
+		int toChoose = max(1, (int)(noOfEntries * fraction));
+		
+		//choose a random starting index
+		int start = rand() % noOfEntries;
+		int end = start + toChoose;
+
+		for (int i = start; i < end; i++) {
+			try {
+					string id = memList.at(i % noOfEntries).id;
+					string ip = id.substr(0, id.find(IP_TIMESTAMP_SEPERATOR));
+					ips->push_back(ip);
+			}
+			catch (exception& e){
+				//the index is probably not available. Log it
+				string msg = "Accessing index in vector failed in getListOfMachinesToSendTo(). Failed index: " + Utility::intToString(i);
+				msg += ". The number of entries in the table is: ";
+				msg += Utility::intToString(noOfEntries);
+				msg += ". Number of entries to be chosen was: ";
+				msg += Utility::intToString(toChoose);
+				msg += " The start and end were: ";
+				msg += Utility::intToString(start);
+				msg += " and ";
+				msg += Utility::intToString(end);
+				logger->logError(INDEX_ACCESS_FAILED, msg , errCode);
+				
+				//whether the logger failed or not, the caller of this function only needs to know that accessing an index failed
+				*errCode = INDEX_ACCESS_FAILED;
+				status = FAILURE;
+				break;
+			}
+		}
+
+		return status;
+	}
+
+
+
+
+	//--------------------------STATIC FUNCTIONS------------------------------//
+	
+	/**
 	 * [gets the network ID. Will differ between reincarnations]
 	 * @param  ip [the ip address]
 	 * @return    [the network ID]
@@ -534,6 +615,8 @@ class MembershipList {
 	static string getNetworkID(string ip) {
 		return ip + ":" + Utility::intToString(time(0));
 	}
+
+
 	
 };
 #endif
