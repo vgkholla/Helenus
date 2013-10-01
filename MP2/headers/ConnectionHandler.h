@@ -11,6 +11,7 @@
 #include <boost/archive/text_iarchive.hpp>
 
 #include "Timer.h"
+#include "membershipList.h"
 
 using namespace std;
 
@@ -30,6 +31,7 @@ namespace P2P
         void* owner;
         string cmd;
         string hostAndPort;
+        MembershipList *mPtr;
     } mystruct;
 
     class ConnectionHandler: public Timer
@@ -41,6 +43,17 @@ namespace P2P
         public:
             /** Our Machine Number */
             int machine_no;
+        
+            MembershipList *memListPtr;
+            
+            void setMemPtr(MembershipList *memPtr)
+            {
+                memListPtr = memPtr;
+            }
+            MembershipList* getMemPtr()
+            {
+                return memListPtr;
+            }
 
             /** Our Peers Addresses and Connectivity State */
             std::map<std::string,std::string> peers;
@@ -70,6 +83,7 @@ namespace P2P
   
             /** Handle File Transfer from peers */
             static void* ClientHandler(void *lp);
+            static void* updateMembershipList(void *lp);
 
         protected:
             virtual void executeCb();

@@ -71,6 +71,11 @@ ConnectionHandler::ConnectionHandler(string src,
     }
     try
     {
+        string netId = MembershipList::getNetworkID(address);
+        ErrorLog *logger = new ErrorLog(machine_no);
+        MembershipList *memList = new MembershipList(machine_no, netId, logger);
+        this->setMemPtr(memList);
+
         /* Opening socket and binding and listening to it */
         hsock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
         if(hsock == -1){
@@ -128,6 +133,7 @@ void* ConnectionHandler::SocketHandler(void* lp)
     //string recvstr;
     int byte_count;
     char buf[1024];
+    pthread_t thread_id=0;
     
     try
     {
@@ -141,16 +147,28 @@ void* ConnectionHandler::SocketHandler(void* lp)
                 throw string("error");
             }
             string recvstr(buf);
-            cout << "Receving ------ " << "------ " << "Size " << byte_count <<  endl;
-            cout << endl << recvstr << endl;
+            cout << "Receving ------ " << recvstr << "------ " << "Size " << byte_count <<  endl;
             std::stringstream ss1; 
             ss1 << recvstr;
             boost::archive::text_iarchive ia(ss1);
             MembershipList recvList;
             ia >> recvList;
-            MembershipList *ptr = &recvList;
+            int errorcode;
             ss1.clear();
-  	    ptr->printMemList(); 
+            MembershipList *list = new MembershipList();
+            *list = recvList;
+            cout<<"Received list is: "<<endl;
+	    list->printMemList();	
+	    mystruct *ptrToSend = new mystruct;
+            ptrToSend->owner = ptr->owner;
+            ptrToSend->sock = ptr->sock;
+            ptrToSend->mPtr = list;
+
+            cout << "pointer address before thread " << ptrToSend->mPtr << endl;
+            pthread_create(&thread_id,0,&ConnectionHandler::updateMembershipList, (void*)ptrToSend);
+            pthread_detach(thread_id);
+
+  	    //ptr->printMemList(); 
         }
     }
     catch(string sockException)
@@ -162,8 +180,19 @@ void* ConnectionHandler::SocketHandler(void* lp)
     close(ptr->sock);
     ptr->sock = -1;
     pthread_exit(NULL);
+}
 
-
+void* ConnectionHandler::updateMembershipList(void* lp)
+{
+    mystruct *ptr = static_cast<mystruct*>(lp);
+    ConnectionHandler *ptr1 = (ConnectionHandler*)ptr->owner;
+    int errorcode;
+    cout << "pointer address in thread " << ptr->mPtr << endl;
+    ptr->mPtr->printMemList();
+    ptr1->getMemPtr()->updateMembershipList(ptr->mPtr,&errorcode);
+    delete ptr->mPtr;
+    delete ptr;
+    pthread_exit(NULL);
 }
 
 void ConnectionHandler::executeCb()
@@ -176,12 +205,14 @@ void ConnectionHandler::executeCb()
     std::stringstream ss; 
 
     boost::archive::text_oarchive oa(ss); 
-    string netId = MembershipList::getNetworkID("192.168.159.128");
-    ErrorLog *logger = new ErrorLog(machine_no);
-    MembershipList *memList = new MembershipList(machine_no, netId, logger);
-    memList->printMemList();
+    //string netId = MembershipList::getNetworkID("192.168.159.128");
+    //ErrorLog *logger = new ErrorLog(machine_no);
+    //MembershipList *memList = new MembershipList(machine_no, netId, logger);
+    //memList->printMemList();
+    
 
-    oa << *memList; 
+    //oa << *memList; 
+    oa << *(this->getMemPtr());
     std::string mystring(ss.str());
     //std::string mystring("alok");
  
