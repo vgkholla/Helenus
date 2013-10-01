@@ -572,10 +572,27 @@ class MembershipList {
 		//choose a random starting index
 		int start = rand() % noOfEntries;
 		int end = start + toChoose;
+		int entryIndex = start;
+		int startSeenOnce = 0;
 
 		for (int i = start; i < end; i++) {
 			try {
-					string id = memList.at(i % noOfEntries).id;
+					if(entryIndex % noOfEntries == start) {
+						if(startSeenOnce) {
+							break;
+						}
+						startSeenOnce = 1;
+					}
+
+					MembershipDetails entry = memList.at(entryIndex % noOfEntries);
+					entryIndex++;
+					
+					string id = entry.id;
+					if(id == networkID || entry.failed == 1 || entry.leaving == 1) {
+						i--;
+						continue;
+					}
+
 					string ip = id.substr(0, id.find(IP_TIMESTAMP_SEPERATOR));
 					ips->push_back(ip);
 			}
