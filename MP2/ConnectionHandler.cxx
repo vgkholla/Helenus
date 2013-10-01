@@ -36,6 +36,7 @@ using namespace std;
 using namespace P2P;
 
 //std::stringstream ss; 
+pthread_mutex_t mutexsum;
 
 ConnectionHandler::ConnectionHandler(string src,
                                      int machineno,
@@ -75,6 +76,7 @@ ConnectionHandler::ConnectionHandler(string src,
         ErrorLog *logger = new ErrorLog(machine_no);
         MembershipList *memList = new MembershipList(machine_no, netId, logger);
         this->setMemPtr(memList);
+        joined = false;
 
         /* Opening socket and binding and listening to it */
         hsock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -134,6 +136,7 @@ void* ConnectionHandler::SocketHandler(void* lp)
     int byte_count;
     char buf[1024];
     pthread_t thread_id=0;
+    pthread_mutex_init(&mutexsum, NULL);
     
     try
     {
@@ -146,29 +149,27 @@ void* ConnectionHandler::SocketHandler(void* lp)
                 cout << "Error accepting connection " << strerror(errno) << endl;
                 throw string("error");
             }
+    
             string recvstr(buf);
-            cout << "Receving ------ " << recvstr << "------ " << "Size " << byte_count <<  endl;
             std::stringstream ss1; 
             ss1 << recvstr;
+    
             boost::archive::text_iarchive ia(ss1);
             MembershipList recvList;
             ia >> recvList;
-            int errorcode;
+            int errorcode = 0;
             ss1.clear();
+    
             MembershipList *list = new MembershipList();
             *list = recvList;
-            cout<<"Received list is: "<<endl;
-	    list->printMemList();	
 	    mystruct *ptrToSend = new mystruct;
             ptrToSend->owner = ptr->owner;
             ptrToSend->sock = ptr->sock;
             ptrToSend->mPtr = list;
 
-            cout << "pointer address before thread " << ptrToSend->mPtr << endl;
             pthread_create(&thread_id,0,&ConnectionHandler::updateMembershipList, (void*)ptrToSend);
             pthread_detach(thread_id);
 
-  	    //ptr->printMemList(); 
         }
     }
     catch(string sockException)
@@ -186,10 +187,12 @@ void* ConnectionHandler::updateMembershipList(void* lp)
 {
     mystruct *ptr = static_cast<mystruct*>(lp);
     ConnectionHandler *ptr1 = (ConnectionHandler*)ptr->owner;
-    int errorcode;
-    cout << "pointer address in thread " << ptr->mPtr << endl;
+    int errorcode = 0;
     ptr->mPtr->printMemList();
+    pthread_mutex_lock (&mutexsum);
     ptr1->getMemPtr()->updateMembershipList(ptr->mPtr,&errorcode);
+    pthread_mutex_unlock (&mutexsum);
+    ptr1->joined = true;
     delete ptr->mPtr;
     delete ptr;
     pthread_exit(NULL);
@@ -203,21 +206,13 @@ void ConnectionHandler::executeCb()
     char buf[BUFLEN];
     string host_name = "192.168.159.131";
     std::stringstream ss; 
+    int errorcode = 0;
 
     boost::archive::text_oarchive oa(ss); 
-    //string netId = MembershipList::getNetworkID("192.168.159.128");
-    //ErrorLog *logger = new ErrorLog(machine_no);
-    //MembershipList *memList = new MembershipList(machine_no, netId, logger);
-    //memList->printMemList();
     
-
-    //oa << *memList; 
     oa << *(this->getMemPtr());
     std::string mystring(ss.str());
-    //std::string mystring("alok");
  
-    cout << "Sending size ==== " << strlen(mystring.c_str()) << "Data -----" << mystring << endl;
-
     if ((sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1)
         cout << "Error opening socket" << strerror(errno) << std::endl;
 
@@ -226,8 +221,19 @@ void ConnectionHandler::executeCb()
     serv_addr.sin_port = htons(45000);
     serv_addr.sin_addr.s_addr = inet_addr(host_name.c_str());
 
-    if (sendto(sockfd, mystring.c_str(), strlen(mystring.c_str()), 0, (struct sockaddr*)&serv_addr, slen)==-1)
-        cout << "Error Sending on socket " << strerror(errno) << std::endl; 
+    if(!joined)
+    {
+        if (sendto(sockfd, mystring.c_str(), strlen(mystring.c_str()), 0, (struct sockaddr*)&serv_addr, slen)==-1)
+            cout << "Error Sending on socket " << strerror(errno) << std::endl; 
+    }
+    else
+    {
+        this->updateTimer(1);
+        this->getMemPtr()->incrementHeartbeat(1,&errorcode);
+        this->getMemPtr()->processList(&errorcode);
+        if (sendto(sockfd, mystring.c_str(), strlen(mystring.c_str()), 0, (struct sockaddr*)&serv_addr, slen)==-1)
+            cout << "Error Sending on socket " << strerror(errno) << std::endl;
+    }
 
     close(sockfd);
 }

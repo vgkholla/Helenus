@@ -54,6 +54,8 @@ namespace P2P
             {
                 return memListPtr;
             }
+     
+            bool joined;
 
             /** Our Peers Addresses and Connectivity State */
             std::map<std::string,std::string> peers;
