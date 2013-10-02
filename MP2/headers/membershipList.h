@@ -132,7 +132,7 @@ class MembershipList {
 	 */
 	void updateTimeToFailure() {
 		//implement something that takes into account the current number of processes. Or just go static, anything is fine 
-		timeToFailure = 1000;
+		timeToFailure = 2000;
 	}
 
 	/**
