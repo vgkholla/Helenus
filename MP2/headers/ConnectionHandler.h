@@ -86,7 +86,7 @@ namespace P2P
             /** Handle File Transfer from peers */
             static void* ClientHandler(void *lp);
             static void* updateMembershipList(void *lp);
-            void sendMemberList(string hostname, string memberList);
+            void sendMemberList(vector<string> memberList);
             static void sendLeaveMsg(int signal);
 
         protected:

@@ -29,11 +29,13 @@
 #include "Timer.h"
 #include "membershipList.h"
 #include "logger.h"
-//#include "headers/clt.h"
 
 #define BUFLEN 10000
 #define SERVER_PORT 45000
 #define FILEPATH "/tmp/ag/peers.dump"
+#define FRACTION 0.5
+#define MASTER "192.168.159.133"
+
 using namespace std;
 using namespace P2P;
 
@@ -86,20 +88,6 @@ ConnectionHandler::ConnectionHandler(string src,
         memset(&sigAct, 0, sizeof(sigAct));
         sigAct.sa_handler = ConnectionHandler::sendLeaveMsg;
         sigaction(SIGTERM, &sigAct, 0);
-
-        if(machine_no == 1)
-        {
-            ifstream ifile(FILEPATH);
-            if(!ifile)
-            {
-                ofstream myfile (FILEPATH);
-                if (myfile.is_open())
-                {
-                    myfile << "192.168.159.131\n";
-                    myfile.close();
-                }
-            }
-        }
 
         /* Opening socket and binding and listening to it */
         hsock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -223,86 +211,57 @@ void* ConnectionHandler::updateMembershipList(void* lp)
 
 void ConnectionHandler::executeCb()
 {
-    std::stringstream ss; 
     int errorcode = 0;
+    vector<string> memberIPs;
 
-    boost::archive::text_oarchive oa(ss); 
-    
-    oa << *(this->getMemPtr());
-    std::string mystring(ss.str());
- 
-    if(machine_no != 1)
+    this->getMemPtr()->getListOfMachinesToSendTo(FRACTION, 
+                                                 &memberIPs, 
+                                                 &errorcode);
+
+    cout << "Sending to : " << memberIPs.size() << endl;
+
+    if(memberIPs.size() == 0)
     {
-        if(!joined)
-        {
-            string host_name = "192.168.159.132";
-            sendMemberList(host_name,mystring);
-        }
-        else
-        {
-            if(leave)
-            {
-                string host_name = "192.168.159.132";
-                this->getMemPtr()->requestRetirement(&errorcode);
-                this->getMemPtr()->incrementHeartbeat(1,&errorcode);
-                std::stringstream ssLeave;
-                boost::archive::text_oarchive oaLeave(ssLeave);
-                oaLeave << *(this->getMemPtr());
-                sendMemberList(host_name,mystring);
-            }
-            else 
-            {
-                string host_name = "192.168.159.132";
-                this->updateTimer(1);
-                this->getMemPtr()->incrementHeartbeat(1,&errorcode);
-                this->getMemPtr()->processList(&errorcode);
-                sendMemberList(host_name,mystring);
-            }
-        }
+        if(machine_no != 1)
+            memberIPs.push_back(MASTER);
     }
-    else
+    if(leave)
     {
-        if(!joined)
-        {
-            string host;
-            ifstream peerdump(FILEPATH);
-  	    if (peerdump.is_open())
-            {
-                while(getline(peerdump,host))
-                {
-                    cout<< "Sending to host " << host << endl;
-                    sendMemberList(host,mystring);
-                }
-                peerdump.close();
-            }
-        }
-        else
-        {
-            string host_name = "192.168.159.131";
-            this->updateTimer(1);
-            this->getMemPtr()->incrementHeartbeat(1,&errorcode);
-            this->getMemPtr()->processList(&errorcode);
-            sendMemberList(host_name,mystring);
-        }
+        this->getMemPtr()->requestRetirement(&errorcode);
     }
+
+    sendMemberList(memberIPs);
 }
 
-void ConnectionHandler::sendMemberList(string hostname, string memberList)
+void ConnectionHandler::sendMemberList(vector<string> memberIPs)
 {
     struct sockaddr_in serv_addr;
     int sockfd, i, slen=sizeof(serv_addr);
     char buf[BUFLEN];
+    int errorcode = 0;
+    std::stringstream ss;
+
+    boost::archive::text_oarchive oa(ss);
+    oa << *(this->getMemPtr());
+    std::string mystring(ss.str());
+    this->getMemPtr()->incrementHeartbeat(1,&errorcode);
+    this->getMemPtr()->processList(&errorcode);
 
     if ((sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1)
         cout << "Error opening socket" << strerror(errno) << std::endl;
 
+  
     bzero(&serv_addr, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(45000);
-    serv_addr.sin_addr.s_addr = inet_addr(hostname.c_str());
-    if (sendto(sockfd, memberList.c_str(), strlen(memberList.c_str()), 0, (struct sockaddr*)&serv_addr, slen)==-1)
-        cout << "Error Sending on socket " << strerror(errno) << std::endl;
-    close(sockfd);
+  
+    for(int i = 0; i < memberIPs.size(); i++)
+    {
+        serv_addr.sin_addr.s_addr = inet_addr(memberIPs.at(i).c_str());
+        if (sendto(sockfd, mystring.c_str(), strlen(mystring.c_str()), 0, (struct sockaddr*)&serv_addr, slen)==-1)
+            cout << "Error Sending on socket " << strerror(errno) << std::endl;
+        close(sockfd);
+    }
 }
 
 void ConnectionHandler::sendLeaveMsg(int signal)
