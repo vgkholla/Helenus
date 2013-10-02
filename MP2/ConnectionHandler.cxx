@@ -34,7 +34,7 @@
 #define SERVER_PORT 45000
 #define FILEPATH "/tmp/ag/peers.dump"
 #define FRACTION 1
-#define MASTER "192.168.159.133"
+//#define MASTER "192.168.159.133"
 
 using namespace std;
 using namespace P2P;
@@ -221,17 +221,17 @@ void ConnectionHandler::executeCb()
                                                  &errorcode);
 
     cout << "Sending to : " << memberIPs.size() << endl;
-
+/*
     if(memberIPs.size() == 0)
     {
         if(machine_no != 1)
             memberIPs.push_back(MASTER);
     }
+*/
     if(leave)
     {
         this->getMemPtr()->requestRetirement(&errorcode);
     }
-
     sendMemberList(memberIPs);
 }
 
