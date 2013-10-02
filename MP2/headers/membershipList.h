@@ -14,10 +14,12 @@
 #include "logger.h"
 #include "errorCodes.h"
 #include "utility.h"
+#include "fileHandler.h"
 
 using namespace std;
 
 #define IP_TIMESTAMP_SEPERATOR ':'
+#define MASTER_IP "127.0.0.1"
 
 class MembershipDetails {
 
@@ -614,6 +616,17 @@ class MembershipList {
 				status = FAILURE;
 				break;
 			}
+		}
+
+		if(ips->size() == 0){
+			//there are no ips to send to. This opens us up to two possibilities, master and non master
+			if(machineID == 1) {//master
+				//read a list of ips from the save file. 
+			}
+			else {
+				ips->push_back(MASTER_IP);
+			}
+
 		}
 
 		return status;
