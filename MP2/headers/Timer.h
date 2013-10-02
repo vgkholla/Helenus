@@ -15,7 +15,7 @@ using namespace std;
 class Timer
 {
 public:
-    Timer(int time)
+    Timer(float time)
     {
         t = time;
     };
@@ -39,7 +39,7 @@ public:
         }
     };
 
-    void updateTimer(int time)
+    void updateTimer(float time)
     {
         t = time;
     }
@@ -48,7 +48,7 @@ protected:
     virtual void executeCb() = 0;
 
 private:
-    int t;
+    float t;
 
 };
 #endif

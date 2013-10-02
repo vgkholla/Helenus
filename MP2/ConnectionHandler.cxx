@@ -33,7 +33,7 @@
 #define BUFLEN 10000
 #define SERVER_PORT 45000
 #define FILEPATH "/tmp/ag/peers.dump"
-#define FRACTION 0.5
+#define FRACTION 1
 #define MASTER "192.168.159.133"
 
 using namespace std;
@@ -46,7 +46,7 @@ bool leave;
 ConnectionHandler::ConnectionHandler(string src,
                                      int machineno,
                                      std::list<string> dest,
-                                     int interval):Timer(interval)
+                                     float interval):Timer(interval)
 {
     struct sockaddr_in my_addr;
     mystruct* f = new mystruct;
@@ -199,10 +199,12 @@ void* ConnectionHandler::updateMembershipList(void* lp)
     mystruct *ptr = static_cast<mystruct*>(lp);
     ConnectionHandler *ptr1 = (ConnectionHandler*)ptr->owner;
     int errorcode = 0;
-    ptr->mPtr->printMemList();
+
     pthread_mutex_lock (&mutexsum);
+    //ptr->mPtr->printMemList();
     ptr1->getMemPtr()->updateMembershipList(ptr->mPtr,&errorcode);
     pthread_mutex_unlock (&mutexsum);
+
     ptr1->joined = true;
     delete ptr->mPtr;
     delete ptr;
@@ -257,11 +259,12 @@ void ConnectionHandler::sendMemberList(vector<string> memberIPs)
   
     for(int i = 0; i < memberIPs.size(); i++)
     {
+        cout << "Sending  Machine " << machine_no << " Sending to IP " << memberIPs.at(i) << endl;
         serv_addr.sin_addr.s_addr = inet_addr(memberIPs.at(i).c_str());
         if (sendto(sockfd, mystring.c_str(), strlen(mystring.c_str()), 0, (struct sockaddr*)&serv_addr, slen)==-1)
             cout << "Error Sending on socket " << strerror(errno) << std::endl;
-        close(sockfd);
     }
+    close(sockfd);
 }
 
 void ConnectionHandler::sendLeaveMsg(int signal)

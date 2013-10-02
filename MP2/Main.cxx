@@ -25,7 +25,7 @@ int main(int argc,
     std::list <string> dest;
     string src;
     int machineno;
-    int interval;
+    float interval;
     for (int i = 1; i < argc; ++i) {
         if (std::string(argv[i]) == "--src") {
             if (i + 1 < argc) { 
@@ -45,7 +45,7 @@ int main(int argc,
         }        
         else if (std::string(argv[i]) == "--interval") {
             if (i + 1 < argc) {
-                interval = atoi(argv[++i]);
+                interval = atof(argv[++i]);
             } else {
                   std::cerr << "--interval option requires one argument." << std::endl;
                 return 1;
