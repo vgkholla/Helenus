@@ -19,7 +19,7 @@
 using namespace std;
 
 #define IP_TIMESTAMP_SEPERATOR ':'
-#define MASTER_IP "127.0.0.1"
+#define MASTER_IP "192.168.159.133"
 
 class MembershipDetails {
 
