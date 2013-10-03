@@ -10,45 +10,61 @@
 #include <unistd.h>
 #include <ctime>
 
+#include <boost/asio.hpp>
+#include <boost/bind.hpp>
+
 using namespace std;
 
 class Timer
 {
 public:
-    Timer(float time)
-    {
-        t = time;
-    };
+    
+    Timer(boost::asio::io_service& io_service, long int interval) : _timer(io_service) {
 
-    //~Timer();
-
-    void addTask(Timer *timer)
-    {
-        clock_t called = clock();
-        int flag = 0;
-        while(1)
-        {
-            clock_t when = clock();
-            double time_span = double(when - called) / CLOCKS_PER_SEC;
-            if(time_span >= t || flag == 0)
-            {
-                flag = 1;
-                called = clock();
-                timer->executeCb();
-            }
-        }
-    };
-
-    void updateTimer(float time)
-    {
-        t = time;
+        _interval = interval;
+        // now schedule the first timer.
+        /* _timer.expires_from_now(boost::posix_time::milliseconds(_interval)); // runs every interval ms
+        _timer.async_wait(boost::bind(&Timer::handleTimeOut, this, boost::asio::placeholders::error));*/
     }
+
+
+    void handleTimeOut(boost::system::error_code const& cError) {
+        if (cError.value() == boost::asio::error::operation_aborted)
+            return;
+
+        if (cError && cError.value() != boost::asio::error::operation_aborted)
+            return; // throw an exception?
+
+        cout << "timer expired" << endl;
+
+        this->executeCb();
+        // Schedule the timer again...
+        _timer.expires_from_now(boost::posix_time::milliseconds(_interval)); // runs every interval ms
+        _timer.async_wait(boost::bind(&Timer::handleTimeOut, this, boost::asio::placeholders::error));
+
+    }
+
+   
+
+    void addTask()
+    {
+        // now schedule the first timer.
+        _timer.expires_from_now(boost::posix_time::milliseconds(_interval)); // runs every interval ms
+        _timer.async_wait(boost::bind(&Timer::handleTimeOut, this, boost::asio::placeholders::error));   
+    };
+
+    /*void updateTimer(float time)
+    {
+        //t = time;
+    }*/
 
 protected:
     virtual void executeCb() = 0;
 
 private:
-    float t;
+    boost::asio::deadline_timer _timer;
+    long int _interval;
+
 
 };
 #endif

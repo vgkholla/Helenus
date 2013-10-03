@@ -6,7 +6,7 @@
 #include <syslog.h>
 #include <list>
 
-#include "ConnectionHandler.h"
+#include "headers/ConnectionHandler.h"
 using namespace std;
 using namespace P2P;
 
@@ -25,7 +25,7 @@ int main(int argc,
     std::list <string> dest;
     string src;
     int machineno;
-    float interval;
+    long int interval;
     for (int i = 1; i < argc; ++i) {
         if (std::string(argv[i]) == "--src") {
             if (i + 1 < argc) { 
