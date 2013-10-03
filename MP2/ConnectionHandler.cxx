@@ -25,10 +25,10 @@
 #include <boost/mpl/inserter.hpp>
 #include <boost/iostreams/filtering_stream.hpp>
 
-#include "headers/ConnectionHandler.h"
-#include "headers/Timer.h"
-#include "headers/membershipList.h"
-#include "headers/logger.h"
+#include "ConnectionHandler.h"
+#include "Timer.h"
+#include "membershipList.h"
+#include "logger.h"
 
 #define BUFLEN 10000
 #define SERVER_PORT 45000
@@ -43,12 +43,10 @@ using namespace P2P;
 pthread_mutex_t mutexsum;
 bool leave;
 
-boost::asio::io_service io_service;
-
 ConnectionHandler::ConnectionHandler(string src,
                                      int machineno,
                                      std::list<string> dest,
-                                     long int interval):Timer(io_service, interval)
+                                     float interval):Timer(interval)
 {
     struct sockaddr_in my_addr;
     mystruct* f = new mystruct;
@@ -126,9 +124,7 @@ ConnectionHandler::ConnectionHandler(string src,
         pthread_create(&thread_id,0,&ConnectionHandler::SocketHandler, (void*)f);
         pthread_detach(thread_id);
 
-        this->addTask();
-        io_service.run();
- 
+        this->addTask(this);
     }
     catch(string sockException)
     {

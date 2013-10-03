@@ -72,7 +72,7 @@ namespace P2P
             explicit ConnectionHandler(string src,
                                        int machineno,
                                        std::list<string> dest,
-                                       long int time);
+                                       float time);
 
             /**
              * Destructor.
