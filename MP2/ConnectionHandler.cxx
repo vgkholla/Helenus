@@ -249,7 +249,11 @@ void ConnectionHandler::sendMemberList(vector<string> memberIPs)
     oa << *(this->getMemPtr());
     std::string mystring(ss.str());
     this->getMemPtr()->incrementHeartbeat(1,&errorcode);
-    this->getMemPtr()->processList(&errorcode);
+
+    if(!leave) {
+        this->getMemPtr()->processList(&errorcode);
+    }
+    
     if(leave && 
        ((time(0) - leaveTimeStamp) > this->getMemPtr()->timeToCleanupInSeconds()))
     {
