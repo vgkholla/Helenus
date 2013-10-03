@@ -42,6 +42,8 @@ using namespace P2P;
 //std::stringstream ss; 
 pthread_mutex_t mutexsum;
 bool leave;
+long int leaveTimeStamp;
+static long int sends = 0;
 
 ConnectionHandler::ConnectionHandler(string src,
                                      int machineno,
@@ -248,11 +250,22 @@ void ConnectionHandler::sendMemberList(vector<string> memberIPs)
     std::string mystring(ss.str());
     this->getMemPtr()->incrementHeartbeat(1,&errorcode);
     this->getMemPtr()->processList(&errorcode);
+    if(leave && 
+       ((time(0) - leaveTimeStamp) > this->getMemPtr()->timeToCleanupInSeconds()))
+    {
+        cout << "Clean up Time expired, Exiting now " << endl;
+        exit(0);
+    }
 
     if ((sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1)
         cout << "Error opening socket" << strerror(errno) << std::endl;
 
-  
+    if(sends%20 == 0)
+    {
+        this->getMemPtr()->writeIPsToFile(&errorcode);
+    }
+    sends++;
+
     bzero(&serv_addr, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(45000);
@@ -270,6 +283,7 @@ void ConnectionHandler::sendMemberList(vector<string> memberIPs)
 void ConnectionHandler::sendLeaveMsg(int signal)
 {
     leave = true;    
+    leaveTimeStamp = time(0);
 }
 
 ConnectionHandler::~ConnectionHandler()

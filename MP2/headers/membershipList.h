@@ -146,22 +146,6 @@ class MembershipList {
 	}
 
 	/**
-	 * [returns to time to failure in seconds]
-	 * @return [TTF in s]
-	 */
-	int timeToFailureInSeconds() {
-		return timeToFailure/1000;
-	}
-
-	/**
-	 * [returns time to cleanup in seconds]
-	 * @return [TTC in seconds]
-	 */
-	int  timeToCleanupInSeconds() {
-		return timeToCleanup/1000;
-	}
-
-	/**
 	 * [merges the data on two membership details entries]
 	 * @param localEntry  [the local entry]
 	 * @param remoteEntry [the remote entry]
@@ -772,6 +756,21 @@ class MembershipList {
 
 	}
 
+        /**
+         * [returns to time to failure in seconds]
+         * @return [TTF in s]
+         */
+        int timeToFailureInSeconds() {
+                return timeToFailure/1000;
+        }
+
+        /**
+         * [returns time to cleanup in seconds]
+         * @return [TTC in seconds]
+         */
+        int  timeToCleanupInSeconds() {
+                return timeToCleanup/1000;
+        }
 
 	//--------------------------STATIC FUNCTIONS------------------------------//
 	
