@@ -21,7 +21,7 @@ using namespace std;
 
 #define IP_TIMESTAMP_SEPERATOR ':'
 #define IP_LIST_ENTRY_SEPERATOR '|'
-#define MASTER_IP "192.168.159.133"
+#define MASTER_IP "127.0.0.1"
 
 class MembershipDetails {
 
@@ -167,7 +167,7 @@ class MembershipList {
 	 * @param remoteEntry [the remote entry]
 	 */
 	void mergeEntries(MembershipDetails *localEntry, MembershipDetails remoteEntry) {
-		if((remoteEntry.heartbeat > localEntry->heartbeat) && localEntry->leaving != 1) { 
+		if((remoteEntry.heartbeat > localEntry->heartbeat) && localEntry->leaving != 1 && remoteEntry.failed != 1) { 
 			//make sure there is an increment in the heartbeat and that the machine has not put in a request for leaving 
 			localEntry->heartbeat = remoteEntry.heartbeat; //update heartbeat
 			localEntry->localTimestamp = time(0);//timestamp right now
