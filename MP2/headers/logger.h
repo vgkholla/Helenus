@@ -21,11 +21,11 @@ using namespace std;
 #define KEY_VALUE_SEPERATOR ":"
 #define TIMESTAMP_MSG_SEPERATOR "-"
 #define LOG_FILE_BASE_PATH "/tmp/ag/"
-#define LOG_ERROR 1
-#define LOG_DEBUG 2
-#define LOG_NOTICE 3
+#define AG_LOG_ERROR 1
+#define AG_LOG_DEBUG 2
+#define AG_LOG_NOTICE 3
 
-#define LOGGING_LEVEL LOG_DEBUG
+#define LOGGING_LEVEL AG_LOG_DEBUG
 #define VERBOSE 1
 
 class LogFileCreationDetails {
@@ -200,7 +200,7 @@ class ErrorLog {
 		time_t timer;
 		string logMsg = "";
 
-		if(msgType == LOG_DEBUG) {
+		if(msgType == AG_LOG_DEBUG) {
 			//make the type the key
 			logMsg += debugTypeToDebugString(type);
 
@@ -259,12 +259,12 @@ class ErrorLog {
 	 */
 	int logError(int errType, string msg, int *errCode) {
 
-		if(LOGGING_LEVEL < LOG_ERROR) {
+		if(LOGGING_LEVEL < AG_LOG_ERROR) {
 			return SUCCESS;
 		}
 
 		//get the log msg
-		string logMsg = buildLogMsg(LOG_ERROR,errType, msg);
+		string logMsg = buildLogMsg(AG_LOG_ERROR,errType, msg);
 
 		//get the log file path
 		string logFilePath = getLogPath(machineID);
@@ -296,12 +296,12 @@ class ErrorLog {
 	 */
 	int logDebug(int debugType, string msg, int *errCode) {
 
-		if(LOGGING_LEVEL < LOG_DEBUG) {
+		if(LOGGING_LEVEL < AG_LOG_DEBUG) {
 			return SUCCESS;
 		}
 
 		//get the log msg
-		string logMsg = buildLogMsg(LOG_DEBUG,debugType, msg);
+		string logMsg = buildLogMsg(AG_LOG_DEBUG,debugType, msg);
 
 		//get the log file path
 		string logFilePath = getLogPath(machineID);

@@ -15,10 +15,12 @@
 #include "errorCodes.h"
 #include "utility.h"
 #include "fileHandler.h"
+#include "clt.h"
 
 using namespace std;
 
 #define IP_TIMESTAMP_SEPERATOR ':'
+#define IP_LIST_ENTRY_SEPERATOR '|'
 #define MASTER_IP "192.168.159.133"
 
 class MembershipDetails {
@@ -343,6 +345,103 @@ class MembershipList {
 		return status;
 	}
 
+	/**
+	 * [gets the name of the file which has the list of known ips in the membership list]
+	 * @return [the file name]
+	 */
+	string getIPsBackupFileName() {
+		return "ips." + Utility::intToString(machineID) + ".bak";
+	}
+
+	/**
+	 * [gets the ip from a network id by stripping out the part before the seperator]
+	 * @param  id [the network id]
+	 * @return    [the ip]
+	 */
+	string getIPFromNetworkID(string id) {
+		return id.substr(0, id.find(IP_TIMESTAMP_SEPERATOR));
+	}
+
+	/**
+	 * [reads a list of ips from the backup file]
+	 * @param  ips     [space to store the ips]
+	 * @param  errCode [space to store error code]
+	 * @return         [status, success or failure]
+	 */
+	int readIPsFromFile(vector<string> *ips, int *errCode) {
+		//bail if there is already an error
+		if(*errCode != NO_ERROR) {
+			string msg = "Unable to execute writeIPsToFile(). A previous error with error code: " + Utility::intToString(*errCode) + " exists";
+			logger->logError(ERROR_ALREADY_EXISTS, msg , errCode);
+			return FAILURE;
+		}
+
+		int status = SUCCESS;
+		
+		//get the filename and path
+		string fileName = getIPsBackupFileName();
+		string filePath = "./" + fileName;
+		string ip = "";
+
+		string ipsString = FileHandler::readFromFile(filePath, &status, errCode);
+		if(status != FAILURE) {
+			int i = 0;
+			while(1) {
+				ip = extractIPByIndex(ipsString, i);
+				if(ip == "") {
+					break;
+				}
+
+				ips->push_back(ip);
+				i++;
+			}
+		}
+
+		return status;
+	}
+
+	/**
+	 * [extracts the ip at a given index in the backup file list (each entry is seperated by a '|')]
+	 * @param  ips   [the string of ips]
+	 * @param  index [the index of the ip we want]
+	 * @return       [the ip desired]
+	 */
+	string extractIPByIndex(string ips, int index) {
+		string ip = "";
+		size_t pos = string::npos;
+		int i = 0;
+
+		while (i <= index && (pos = ips.find(IP_LIST_ENTRY_SEPERATOR)) != string::npos) {
+			if( i == index) {
+				ip = ips.substr(0, pos);
+			}
+
+			ips.replace(0, pos + 1, "");
+			i++;
+		}
+		
+		return ip;
+	}
+
+	/**
+	 * [from a given string, extracts the next ip and erases that ip from the string]
+	 * @param  ips [the string of ips]
+	 * @return     [the ip desired]
+	 */
+	//NOT USED!!
+	string extractAndEraseNextIP(string *ips) {
+		string ip = "";
+		int pos = ips->find(IP_LIST_ENTRY_SEPERATOR);
+		if(pos != string::npos) {
+			ip = ips->substr(0, pos);
+			ips->replace(0, pos + 1, "");
+		}
+		
+		return ip;
+
+	}
+
+
 	public:
 	
 	/**
@@ -589,14 +688,13 @@ class MembershipList {
 					MembershipDetails entry = memList.at(entryIndex % noOfEntries);
 					entryIndex++;
 					
-					string id = entry.id;
-					if(id == networkID || entry.failed == 1 || entry.leaving == 1) {
+					
+					if(entry.id == networkID || entry.failed == 1 || entry.leaving == 1) {
 						i--;
 						continue;
 					}
 
-					string ip = id.substr(0, id.find(IP_TIMESTAMP_SEPERATOR));
-					ips->push_back(ip);
+					ips->push_back(getIPFromNetworkID(entry.id));
 			}
 			catch (exception& e){
 				//the index is probably not available. Log it
@@ -621,9 +719,11 @@ class MembershipList {
 		if(ips->size() == 0){
 			//there are no ips to send to. This opens us up to two possibilities, master and non master
 			if(machineID == 1) {//master
-				//read a list of ips from the save file. 
+				//read a list of ips from the save file.
+				//if the save file has no entries, then this is the first incarnation of the master 
+				status = readIPsFromFile(ips, errCode);
 			}
-			else {
+			else {//not master. so we are probably trying to join. inform the master
 				ips->push_back(MASTER_IP);
 			}
 
@@ -632,7 +732,45 @@ class MembershipList {
 		return status;
 	}
 
+	int writeIPsToFile(int *errCode) {
+		//bail if there is already an error
+		if(*errCode != NO_ERROR) {
+			string msg = "Unable to execute writeIPsToFile(). A previous error with error code: " + Utility::intToString(*errCode) + " exists";
+			logger->logError(ERROR_ALREADY_EXISTS, msg , errCode);
+			return FAILURE;
+		}
 
+		int status = SUCCESS;
+
+		//get the filename and path
+		string fileName = getIPsBackupFileName();
+		string filePath = "./" + fileName;
+		string ips = "";
+
+		//iterate through the list and pick up the ips
+		for(int i = 0; i < memList.size(); i++) {
+			MembershipDetails entry = memList.at(i);
+
+			if(entry.id != networkID && entry.failed != 1 && entry.leaving != 1) {
+				ips += getIPFromNetworkID(entry.id);
+				ips += IP_LIST_ENTRY_SEPERATOR;
+			}
+		}
+
+		//remove the old file
+		string removeCmd = "rm -rf " + filePath;
+		CommandResultDetails *details = new CommandResultDetails();
+		CommandLineTools::executeCmd(removeCmd, details);
+		status = details->returnStatus;
+
+		if(status != FAILURE) {
+			status = FileHandler::writeToFile(filePath, ips, errCode);
+		}
+
+		delete details;
+		return status;
+
+	}
 
 
 	//--------------------------STATIC FUNCTIONS------------------------------//

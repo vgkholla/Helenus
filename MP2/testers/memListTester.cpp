@@ -78,7 +78,6 @@ int main() {
 	memList4->printMemList();
 	cout<<endl;
 
-	
 	memList1->updateMembershipList(memList2, &errCode);
 	memList1->updateMembershipList(memList3, &errCode);
 	memList1->updateMembershipList(memList4, &errCode);
@@ -89,13 +88,40 @@ int main() {
 	cout<<"Modified List 1: "<<endl;
 	memList1->printMemList();
 
+	//memList1->writeIPsToFile(&errCode);
+
+	/*memList2->updateMembershipList(memList3, &errCode);
+	cout<<"have to send to: "<<endl;
 	vector<string> ips;
+	memList2->getListOfMachinesToSendTo(0.5, &ips, &errCode);
+	for(int i=0; i< ips.size(); i++) {
+		cout<<ips.at(i)<<endl;
+	}
+	*/
+
+	/*
+	cout<<"have to send to: "<<endl;
+	vector<string> ips;
+	memList1->getListOfMachinesToSendTo(0.5, &ips, &errCode);
+	for(int i=0; i< ips.size(); i++) {
+		cout<<ips.at(i)<<endl;
+	}
+	 */
+	
+	/*vector<string> ips;
+	memList1->readIPsFromFile(&ips, &errCode);
+	cout<<"List of ips from the file is"<<endl;
+	for(int i=0; i< ips.size(); i++) {
+		cout<<ips.at(i)<<endl;
+	}*/
+
+	/*vector<string> ips;
 	memList1->getListOfMachinesToSendTo(0.5, &ips, &errCode);
 
 	cout<<"The ips are: "<<endl;
 	for(int j =0; j < ips.size(); j++) {
 		cout<<ips.at(j)<<endl;
-	}
+	}*/
 
 	/**
 	
