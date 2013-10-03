@@ -11,7 +11,7 @@
 #include <ctime>
 #include <time.h>
 
-#define NANO_SECOND_MULTIPLIER  1000000
+#define NANO_SECOND_MULTIPLIER  1000000000
 
 using namespace std;
 
@@ -28,10 +28,14 @@ public:
     void addTask(Timer *timer)
     {
         while(1) {
-            const long INTERVAL_MS = t * NANO_SECOND_MULTIPLIER;
+            const uint64_t INTERVAL_MS = t * NANO_SECOND_MULTIPLIER;
             timespec sleepValue = {0};
+            sleepValue.tv_nsec = INTERVAL_MS;
+	    if (INTERVAL_MS >= 1000000000ul) {
+                sleepValue.tv_sec += INTERVAL_MS / (1000000000ul);
+                sleepValue.tv_nsec = INTERVAL_MS%(1000000000ul);
+            }
 
-	    sleepValue.tv_nsec = INTERVAL_MS;
 	    nanosleep(&sleepValue, NULL);
             timer->executeCb();
         }
