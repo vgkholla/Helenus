@@ -33,7 +33,7 @@
 #define BUFLEN 10000
 #define SERVER_PORT 45000
 #define FILEPATH "/tmp/ag/peers.dump"
-#define FRACTION 1
+#define FRACTION 0.5
 //#define MASTER "192.168.159.133"
 
 using namespace std;
@@ -43,7 +43,7 @@ using namespace P2P;
 pthread_mutex_t mutexsum;
 bool leave;
 long int leaveTimeStamp;
-static long int sends = 0;
+static long int sends = 1;
 
 ConnectionHandler::ConnectionHandler(string src,
                                      int machineno,
@@ -264,7 +264,7 @@ void ConnectionHandler::sendMemberList(vector<string> memberIPs)
     if ((sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1)
         cout << "Error opening socket" << strerror(errno) << std::endl;
 
-    if(sends%20 == 0)
+    if(sends % 20 == 0 && machine_no == 1)
     {
         this->getMemPtr()->writeIPsToFile(&errorcode);
     }

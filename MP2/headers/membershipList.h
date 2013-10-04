@@ -134,7 +134,7 @@ class MembershipList {
 	 */
 	void updateTimeToFailure() {
 		//implement something that takes into account the current number of processes. Or just go static, anything is fine 
-		timeToFailure = 2000;
+		timeToFailure = 4000;
 	}
 
 	/**
@@ -142,7 +142,7 @@ class MembershipList {
 	 */
 	void updateTimeToCleanup() {
 		//implement something that takes into account the current number of processes. Or just go static, anything is fine 
-		timeToCleanup = 5000;
+		timeToCleanup = 4000;
 	}
 
 	/**
@@ -225,6 +225,7 @@ class MembershipList {
 		if(status != FAILURE && entryToProcess.leaving != 1 && entryToProcess.failed != 1 && matchFound == 0) {
 			string msg = "New member in the network with network ID: " + entryToProcess.id;
 			logger->logDebug(MEMBER_JOINED, msg, errCode);
+			entryToProcess.localTimestamp = time(0);
 			addToList(entryToProcess);
 		}
 
@@ -297,7 +298,9 @@ class MembershipList {
 		try {
 				MembershipDetails *entryToProcess = &memList.at(i);
 				//if we had previously marked this as failed or left and we have advanced cleanup seconds since then, mark for deletion
-				if((entryToProcess->failed == 1 || entryToProcess->leaving == 1) && (entryToProcess->localTimestamp + timeToCleanupInSeconds() < time(0))) {
+				if((entryToProcess->failed == 1 && (entryToProcess->failureTimestamp + timeToCleanupInSeconds() < time(0)))
+					|| (entryToProcess->leaving == 1 && (entryToProcess->localTimestamp + timeToCleanupInSeconds() < time(0)))
+						) {
 					string msg = "Machine with Network ID: " + entryToProcess->id;
 					msg += entryToProcess->failed == 1 ? " has failed " : " has left ";
 					msg += " and has been removed from the membership list";
@@ -312,6 +315,8 @@ class MembershipList {
 					entryToProcess->failed = 1;
 					entryToProcess->failureTimestamp = time(0);
 					string msg = "Suspected machine failure. Network ID: " + entryToProcess->id;
+					cout<<"Current time: "<<time(0)<<endl;
+					printMemList();
 					logger->logDebug(MEMBER_SUSPECTED_FAILED, msg, errCode);
 				}
 
@@ -756,21 +761,21 @@ class MembershipList {
 
 	}
 
-        /**
-         * [returns to time to failure in seconds]
-         * @return [TTF in s]
-         */
-        int timeToFailureInSeconds() {
-                return timeToFailure/1000;
-        }
+    /**
+     * [returns to time to failure in seconds]
+     * @return [TTF in s]
+     */
+    int timeToFailureInSeconds() {
+            return timeToFailure/1000;
+    }
 
-        /**
-         * [returns time to cleanup in seconds]
-         * @return [TTC in seconds]
-         */
-        int  timeToCleanupInSeconds() {
-                return timeToCleanup/1000;
-        }
+    /**
+     * [returns time to cleanup in seconds]
+     * @return [TTC in seconds]
+     */
+    int  timeToCleanupInSeconds() {
+            return timeToCleanup/1000;
+    }
 
 	//--------------------------STATIC FUNCTIONS------------------------------//
 	
