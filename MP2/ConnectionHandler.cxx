@@ -48,6 +48,7 @@ static long int sends = 1;
 ConnectionHandler::ConnectionHandler(string src,
                                      int machineno,
                                      std::list<string> dest,
+                                     int sendPercentage,
                                      float interval):Timer(interval)
 {
     struct sockaddr_in my_addr;
@@ -66,6 +67,7 @@ ConnectionHandler::ConnectionHandler(string src,
 
     address = src;
     machine_no = machineno;
+    sendPct = sendPercentage;
     cout << "Machine No. " << machine_no << " Address" << address << " Port " << port << std::endl;
 
     /* Marking all clients as unconnected */
@@ -83,7 +85,6 @@ ConnectionHandler::ConnectionHandler(string src,
         ErrorLog *logger = new ErrorLog(machine_no);
         MembershipList *memList = new MembershipList(machine_no, netId, logger);
         this->setMemPtr(memList);
-        joined = false;
         leave = false;
         
         struct sigaction sigAct;
@@ -207,7 +208,6 @@ void* ConnectionHandler::updateMembershipList(void* lp)
     ptr1->getMemPtr()->updateMembershipList(ptr->mPtr,&errorcode);
     pthread_mutex_unlock (&mutexsum);
 
-    ptr1->joined = true;
     delete ptr->mPtr;
     delete ptr;
     pthread_exit(NULL);
@@ -244,44 +244,49 @@ void ConnectionHandler::sendMemberList(vector<string> memberIPs)
     char buf[BUFLEN];
     int errorcode = 0;
     std::stringstream ss;
+#ifdef TESTING
+    int calPct = rand() % 100;
+    if(sendPct > 0 && (calPct < sendPct))
+#endif
+    {
+        boost::archive::text_oarchive oa(ss);
+    	oa << *(this->getMemPtr());
+    	std::string mystring(ss.str());
+    	this->getMemPtr()->incrementHeartbeat(1,&errorcode);
 
-    boost::archive::text_oarchive oa(ss);
-    oa << *(this->getMemPtr());
-    std::string mystring(ss.str());
-    this->getMemPtr()->incrementHeartbeat(1,&errorcode);
-
-    if(!leave) {
-        this->getMemPtr()->processList(&errorcode);
-    }
+    	if(!leave) {
+            this->getMemPtr()->processList(&errorcode);
+    	}
     
-    if(leave && 
-       ((time(0) - leaveTimeStamp) > this->getMemPtr()->timeToCleanupInSeconds()))
-    {
-        cout << "Clean up Time expired, Exiting now " << endl;
-        exit(0);
-    }
+    	if(leave && 
+           ((time(0) - leaveTimeStamp) > this->getMemPtr()->timeToCleanupInSeconds()))
+    	{
+            cout << "Clean up Time expired, Exiting now " << endl;
+            exit(0);
+    	}
 
-    if ((sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1)
-        cout << "Error opening socket" << strerror(errno) << std::endl;
+    	if ((sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1)
+            cout << "Error opening socket" << strerror(errno) << std::endl;
 
-    if(sends % 20 == 0 && machine_no == 1)
-    {
-        this->getMemPtr()->writeIPsToFile(&errorcode);
-    }
-    sends++;
+    	if(sends % 20 == 0 && machine_no == 1)
+    	{
+    	    this->getMemPtr()->writeIPsToFile(&errorcode);
+    	}
+    	sends++;
 
-    bzero(&serv_addr, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(45000);
+    	bzero(&serv_addr, sizeof(serv_addr));
+    	serv_addr.sin_family = AF_INET;
+    	serv_addr.sin_port = htons(45000);
   
-    for(int i = 0; i < memberIPs.size(); i++)
-    {
-        cout << "Sending  Machine " << machine_no << " Sending to IP " << memberIPs.at(i) << endl;
-        serv_addr.sin_addr.s_addr = inet_addr(memberIPs.at(i).c_str());
-        if (sendto(sockfd, mystring.c_str(), strlen(mystring.c_str()), 0, (struct sockaddr*)&serv_addr, slen)==-1)
-            cout << "Error Sending on socket " << strerror(errno) << std::endl;
+    	for(int i = 0; i < memberIPs.size(); i++)
+    	{
+            cout << "Sending  Machine " << machine_no << " Sending to IP " << memberIPs.at(i) << endl;
+            serv_addr.sin_addr.s_addr = inet_addr(memberIPs.at(i).c_str());
+            if (sendto(sockfd, mystring.c_str(), strlen(mystring.c_str()), 0, (struct sockaddr*)&serv_addr, slen)==-1)
+                cout << "Error Sending on socket " << strerror(errno) << std::endl;
+    	}
+    	close(sockfd);
     }
-    close(sockfd);
 }
 
 void ConnectionHandler::sendLeaveMsg(int signal)

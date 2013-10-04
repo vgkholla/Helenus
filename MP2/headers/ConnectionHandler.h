@@ -43,6 +43,8 @@ namespace P2P
         public:
             /** Our Machine Number */
             int machine_no;
+
+            int sendPct;
         
             MembershipList *memListPtr;
             
@@ -55,8 +57,6 @@ namespace P2P
                 return memListPtr;
             }
      
-            bool joined;
-
             /** Our Peers Addresses and Connectivity State */
             std::map<std::string,std::string> peers;
 
@@ -72,6 +72,7 @@ namespace P2P
             explicit ConnectionHandler(string src,
                                        int machineno,
                                        std::list<string> dest,
+                                       int sendPercentage,
                                        float time);
 
             /**
@@ -84,9 +85,11 @@ namespace P2P
             static void* SocketHandler(void *lp);
   
             /** Handle File Transfer from peers */
-            static void* ClientHandler(void *lp);
+            
             static void* updateMembershipList(void *lp);
+            
             void sendMemberList(vector<string> memberList);
+            
             static void sendLeaveMsg(int signal);
 
         protected:

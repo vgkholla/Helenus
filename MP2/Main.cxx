@@ -15,7 +15,7 @@ int main(int argc,
          char **argv)
 {
     if (argc < 5) {
-        std::cerr << "Usage: " << argv[0] << " --src SOURCE --machineno MACHINENO --interval INTERVAL DESTINATIONS" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " --src SOURCE --machineno MACHINENO --interval INTERVAL --sendpct SENDPCT DESTINATIONS" << std::endl;
         return 1;
     }
     /* Accept the command inputs
@@ -27,6 +27,7 @@ int main(int argc,
     string src;
     int machineno;
     float interval;
+    int sendPercentage;
     for (int i = 1; i < argc; ++i) {
         if (std::string(argv[i]) == "--src") {
             if (i + 1 < argc) { 
@@ -52,13 +53,25 @@ int main(int argc,
                 return 1;
             }
         }
+        else if (std::string(argv[i]) == "--sendpct") {
+            if (i + 1 < argc) {
+                sendPercentage = atof(argv[++i]);
+            } else {
+                  std::cerr << "--sendpct option requires one argument." << std::endl;
+                return 1;
+            }
+        }
         else {
             dest.push_back(argv[i]);
         }
     }
 
     /** Start the Peer with IP address and its machine no */
-    ConnectionHandler conn(src,machineno,dest,interval);
+    ConnectionHandler conn(src,
+                           machineno,
+                           dest,
+                           sendPercentage,
+                           interval);
     syslog(LOG_INFO,"\nStarting Peer");
     while (1) {}
     return (0);

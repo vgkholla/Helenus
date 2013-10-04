@@ -6,14 +6,14 @@ INCLUDEDIRS = \
 
 LIBS = -lpthread 
 
-STD_LIBS = -L/home/aloktiagi/boost-trunk/bin.v2/libs/serialization/build/gcc-4.7/release/link-static/threading-multi -lboost_serialization
+STD_LIBS = -lboost_serialization
 
 CXXSOURCES = \
              ./Main.cxx \
              ./ConnectionHandler.cxx
 CXXOBJECTS = $(CXXSOURCES:.cpp=.o)  # expands to list of object files
 CXXFLAGS = $(INCLUDEDIRS)
-CXX = g++ -fpermissive -std=gnu++11 -g
+CXX = g++ -fpermissive -g
 
 LDFLAGS = $(LIBDIRS) $(LIBS) $(STD_LIBS)
 
