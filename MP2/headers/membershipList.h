@@ -21,7 +21,7 @@ using namespace std;
 
 #define IP_TIMESTAMP_SEPERATOR ':'
 #define IP_LIST_ENTRY_SEPERATOR '|'
-#define MASTER_IP "192.17.11.18"
+#define MASTER_IP "192.17.11.56"
 
 class MembershipDetails {
 

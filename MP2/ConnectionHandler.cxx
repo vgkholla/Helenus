@@ -44,6 +44,7 @@ pthread_mutex_t mutexsum;
 bool leave;
 long int leaveTimeStamp;
 static long int sends = 1;
+ErrorLog *logger;
 
 ConnectionHandler::ConnectionHandler(string src,
                                      int machineno,
@@ -82,7 +83,7 @@ ConnectionHandler::ConnectionHandler(string src,
     try
     {
         string netId = MembershipList::getNetworkID(address);
-        ErrorLog *logger = new ErrorLog(machine_no);
+        logger = new ErrorLog(machine_no);
         MembershipList *memList = new MembershipList(machine_no, netId, logger);
         this->setMemPtr(memList);
         leave = false;
@@ -161,7 +162,6 @@ void* ConnectionHandler::SocketHandler(void* lp)
             if(byte_count == -1)
             {
                 cout << "Error accepting connection " << strerror(errno) << endl;
-                throw string("error");
             }
     
             string recvstr(buf);
@@ -186,11 +186,11 @@ void* ConnectionHandler::SocketHandler(void* lp)
 
         }
     }
-    catch(string sockException)
+    catch(exception& e)
     {
-        close(ptr->sock);
-        ptr->sock = -1;
-        pthread_exit(NULL);
+        string msg = "Failed to de-serialize";
+        int errCode = 0;
+        logger->logError(SERIALIZATION_ERROR, msg , &errCode);
     }
     close(ptr->sock);
     ptr->sock = -1;
@@ -223,13 +223,7 @@ void ConnectionHandler::executeCb()
                                                  &errorcode);
 
     cout << "Sending to : " << memberIPs.size() << endl;
-/*
-    if(memberIPs.size() == 0)
-    {
-        if(machine_no != 1)
-            memberIPs.push_back(MASTER);
-    }
-*/
+    
     if(leave)
     {
         this->getMemPtr()->requestRetirement(&errorcode);
@@ -249,9 +243,6 @@ void ConnectionHandler::sendMemberList(vector<string> memberIPs)
     if(sendPct > 0 && (calPct < sendPct))
 #endif
     {
-        boost::archive::text_oarchive oa(ss);
-    	oa << *(this->getMemPtr());
-    	std::string mystring(ss.str());
     	this->getMemPtr()->incrementHeartbeat(1,&errorcode);
 
     	if(!leave) {
@@ -265,27 +256,43 @@ void ConnectionHandler::sendMemberList(vector<string> memberIPs)
             exit(0);
     	}
 
-    	if ((sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1)
-            cout << "Error opening socket" << strerror(errno) << std::endl;
+        try
+        {
 
-    	if(sends % 20 == 0 && machine_no == 1)
-    	{
-    	    this->getMemPtr()->writeIPsToFile(&errorcode);
-    	}
-    	sends++;
+            boost::archive::text_oarchive oa(ss);
+            oa << *(this->getMemPtr());
+            std::string mystring(ss.str());
 
-    	bzero(&serv_addr, sizeof(serv_addr));
-    	serv_addr.sin_family = AF_INET;
-    	serv_addr.sin_port = htons(45000);
+
+    	    if ((sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1)
+                cout << "Error opening socket" << strerror(errno) << std::endl;
+
+    	    if(sends % 20 == 0 && machine_no == 1)
+    	    {
+    	        this->getMemPtr()->writeIPsToFile(&errorcode);
+    	    }
+    	    sends++;
+
+    	    bzero(&serv_addr, sizeof(serv_addr));
+    	    serv_addr.sin_family = AF_INET;
+    	    serv_addr.sin_port = htons(45000);
   
-    	for(int i = 0; i < memberIPs.size(); i++)
-    	{
-            cout << "Sending  Machine " << machine_no << " Sending to IP " << memberIPs.at(i) << endl;
-            serv_addr.sin_addr.s_addr = inet_addr(memberIPs.at(i).c_str());
-            if (sendto(sockfd, mystring.c_str(), strlen(mystring.c_str()), 0, (struct sockaddr*)&serv_addr, slen)==-1)
-                cout << "Error Sending on socket " << strerror(errno) << std::endl;
-    	}
-    	close(sockfd);
+    	    for(int i = 0; i < memberIPs.size(); i++)
+    	    {
+                cout << "Sending  Machine " << machine_no << " Sending to IP " << memberIPs.at(i) << endl;
+                serv_addr.sin_addr.s_addr = inet_addr(memberIPs.at(i).c_str());
+                if (sendto(sockfd, mystring.c_str(), strlen(mystring.c_str()), 0, (struct sockaddr*)&serv_addr, slen)==-1)
+                    cout << "Error Sending on socket " << strerror(errno) << std::endl;
+    	    }
+    	    close(sockfd);
+        }
+        catch(exception& e)
+        {
+            //Failed to serialize. Log it
+            string msg = "Failed to serialize";
+            int errCode = 0;
+            logger->logError(SERIALIZATION_ERROR, msg , &errCode);
+        }
     }
 }
 

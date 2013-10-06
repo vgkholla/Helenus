@@ -38,5 +38,6 @@
 #define EMPTY_LIST 7
 #define SELF_ENTRY_NOT_FOUND 8
 #define ERROR_ALREADY_EXISTS 9
+#define SERIALIZATION_ERROR 10
 
 #endif

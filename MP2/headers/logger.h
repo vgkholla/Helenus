@@ -158,6 +158,8 @@ class ErrorLog {
 				return "SELF_ENTRY_NOT_FOUND";
 			case ERROR_ALREADY_EXISTS:
 				return "ERROR_ALREADY_EXISTS";
+                        case SERIALIZATION_ERROR:
+                                return "SERIALIZATION_ERROR";
 			default:
 				return "UNKNOWN_ERROR";
 		}
