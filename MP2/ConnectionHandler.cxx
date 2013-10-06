@@ -153,9 +153,9 @@ void* ConnectionHandler::SocketHandler(void* lp)
     pthread_t thread_id=0;
     pthread_mutex_init(&mutexsum, NULL);
     
-    try
+    while(1)
     {
-        while(1)
+        try
         {
             memset(buf, 0, 1024);
             byte_count = recvfrom(ptr->sock, buf, 1024, 0, (struct sockaddr*)&cli_addr, &slen);
@@ -176,21 +176,20 @@ void* ConnectionHandler::SocketHandler(void* lp)
     
             MembershipList *list = new MembershipList();
             *list = recvList;
-	    mystruct *ptrToSend = new mystruct;
+            mystruct *ptrToSend = new mystruct;
             ptrToSend->owner = ptr->owner;
             ptrToSend->sock = ptr->sock;
             ptrToSend->mPtr = list;
 
             pthread_create(&thread_id,0,&ConnectionHandler::updateMembershipList, (void*)ptrToSend);
             pthread_detach(thread_id);
-
         }
-    }
-    catch(exception& e)
-    {
-        string msg = "Failed to de-serialize";
-        int errCode = 0;
-        logger->logError(SERIALIZATION_ERROR, msg , &errCode);
+        catch(exception& e)
+        {
+            string msg = "Failed to de-serialize";
+            int errCode = 0;
+            logger->logError(SERIALIZATION_ERROR, msg , &errCode);
+        }
     }
     close(ptr->sock);
     ptr->sock = -1;
