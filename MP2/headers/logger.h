@@ -26,7 +26,7 @@ using namespace std;
 #define AG_LOG_NOTICE 3
 
 #define LOGGING_LEVEL AG_LOG_DEBUG
-#define VERBOSE 1
+#define VERBOSE 0
 
 class LogFileCreationDetails {
 	
@@ -160,6 +160,8 @@ class ErrorLog {
 				return "ERROR_ALREADY_EXISTS";
                         case SERIALIZATION_ERROR:
                                 return "SERIALIZATION_ERROR";
+                        case SOCKET_ERROR:
+                                return "SOCKET_ERROR";
 			default:
 				return "UNKNOWN_ERROR";
 		}

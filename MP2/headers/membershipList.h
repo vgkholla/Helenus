@@ -315,8 +315,8 @@ class MembershipList {
 					entryToProcess->failed = 1;
 					entryToProcess->failureTimestamp = time(0);
 					string msg = "Suspected machine failure. Network ID: " + entryToProcess->id;
-					cout<<"Current time: "<<time(0)<<endl;
-					printMemList();
+					//cout<<"Current time: "<<time(0)<<endl;
+					//printMemList();
 					logger->logDebug(MEMBER_SUSPECTED_FAILED, msg, errCode);
 				}
 

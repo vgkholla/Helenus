@@ -69,17 +69,7 @@ ConnectionHandler::ConnectionHandler(string src,
     address = src;
     machine_no = machineno;
     sendPct = sendPercentage;
-    cout << "Machine No. " << machine_no << " Address" << address << " Port " << port << std::endl;
 
-    /* Marking all clients as unconnected */
-    for (std::list<string>::iterator it = dest.begin(); it != dest.end(); it++)
-        peers[*it] = "unconnected";
-
-    for(std::map<string,string>::const_iterator it = peers.begin();
-        it != peers.end(); ++it)
-    {
-        std::cout << it->first << " " << it->second << "\n";
-    }
     try
     {
         string netId = MembershipList::getNetworkID(address);
@@ -96,7 +86,10 @@ ConnectionHandler::ConnectionHandler(string src,
         /* Opening socket and binding and listening to it */
         hsock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
         if(hsock == -1){
-            cout << "Error opening socket " << strerror(errno) << endl;
+            string msg = "Failed to open socket";
+            int errCode = 0;
+            logger->logError(SOCKET_ERROR, msg , &errCode);
+            //cout << "Error opening socket " << strerror(errno) << endl;
             throw string("error");
         }
     
@@ -106,7 +99,10 @@ ConnectionHandler::ConnectionHandler(string src,
         /* Setting socket options */ 
         if( (setsockopt(hsock, SOL_SOCKET, SO_REUSEADDR, (char*)p_int, sizeof(int)) == -1 )||
             (setsockopt(hsock, SOL_SOCKET, SO_KEEPALIVE, (char*)p_int, sizeof(int)) == -1 ) ){
-            cout << "Error setting socket options " << strerror(errno) << endl;
+            string msg = "Failed to set socket options";
+            int errCode = 0;
+            logger->logError(SOCKET_ERROR, msg , &errCode);
+            //cout << "Error setting socket options " << strerror(errno) << endl;
             free(p_int);
             throw string("error");
         }
@@ -119,7 +115,10 @@ ConnectionHandler::ConnectionHandler(string src,
         my_addr.sin_addr.s_addr = inet_addr(address.c_str());;
     
         if( bind( hsock, (sockaddr*)&my_addr, sizeof(my_addr)) == -1 ){
-            cout << "Error binding to socket, make sure nothing else is listening on this port " << strerror(errno) << endl;
+            string msg = "Failed to bind to socket";
+            int errCode = 0;
+            logger->logError(SOCKET_ERROR, msg , &errCode);
+            //cout << "Error binding to socket, make sure nothing else is listening on this port " << strerror(errno) << endl;
             throw string("error");
         }
 
@@ -161,7 +160,10 @@ void* ConnectionHandler::SocketHandler(void* lp)
             byte_count = recvfrom(ptr->sock, buf, 1024, 0, (struct sockaddr*)&cli_addr, &slen);
             if(byte_count == -1)
             {
-                cout << "Error accepting connection " << strerror(errno) << endl;
+                string msg = "Failed to receive on socket";
+                int errCode = 0;
+                logger->logError(SOCKET_ERROR, msg , &errCode);
+                //cout << "Error accepting connection " << strerror(errno) << endl;
             }
     
             string recvstr(buf);
@@ -221,7 +223,7 @@ void ConnectionHandler::executeCb()
                                                  &memberIPs, 
                                                  &errorcode);
 
-    cout << "Sending to : " << memberIPs.size() << endl;
+    //cout << "Sending to : " << memberIPs.size() << endl;
     
     if(leave)
     {
@@ -251,7 +253,10 @@ void ConnectionHandler::sendMemberList(vector<string> memberIPs)
     	if(leave && 
            ((time(0) - leaveTimeStamp) > this->getMemPtr()->timeToCleanupInSeconds()))
     	{
-            cout << "Clean up Time expired, Exiting now " << endl;
+            string msg = "Elvis has left the building";
+            int errCode = 0;
+            logger->logDebug(MEMBER_LEFT, msg , &errCode);
+            //cout << "Clean up Time expired, Exiting now " << endl;
             exit(0);
     	}
 
@@ -264,7 +269,12 @@ void ConnectionHandler::sendMemberList(vector<string> memberIPs)
 
 
     	    if ((sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1)
-                cout << "Error opening socket" << strerror(errno) << std::endl;
+            {
+                string msg = "Failed to open socket";
+                int errCode = 0;
+                logger->logError(SOCKET_ERROR, msg , &errCode);
+                //cout << "Error opening socket" << strerror(errno) << std::endl;
+            }
 
     	    if(sends % 20 == 0 && machine_no == 1)
     	    {
@@ -278,10 +288,14 @@ void ConnectionHandler::sendMemberList(vector<string> memberIPs)
   
     	    for(int i = 0; i < memberIPs.size(); i++)
     	    {
-                cout << "Sending  Machine " << machine_no << " Sending to IP " << memberIPs.at(i) << endl;
+                //cout << "Sending  Machine " << machine_no << " Sending to IP " << memberIPs.at(i) << endl;
                 serv_addr.sin_addr.s_addr = inet_addr(memberIPs.at(i).c_str());
                 if (sendto(sockfd, mystring.c_str(), strlen(mystring.c_str()), 0, (struct sockaddr*)&serv_addr, slen)==-1)
-                    cout << "Error Sending on socket " << strerror(errno) << std::endl;
+                {
+                    string msg = "Failed to send on socket";
+                    int errCode = 0;
+                    logger->logError(SOCKET_ERROR, msg , &errCode);
+                }
     	    }
     	    close(sockfd);
         }
