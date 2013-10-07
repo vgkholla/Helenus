@@ -72,12 +72,16 @@ ConnectionHandler::ConnectionHandler(string src,
 
     try
     {
+        /* Create my own membership list
+           Initialize the logger 
+         */
         string netId = MembershipList::getNetworkID(address);
         logger = new ErrorLog(machine_no);
         MembershipList *memList = new MembershipList(machine_no, netId, logger);
         this->setMemPtr(memList);
         leave = false;
         
+        /* Initialize signal handler */
         struct sigaction sigAct;
         memset(&sigAct, 0, sizeof(sigAct));
         sigAct.sa_handler = ConnectionHandler::sendLeaveMsg;
@@ -122,11 +126,17 @@ ConnectionHandler::ConnectionHandler(string src,
             throw string("error");
         }
 
+        /* Create a thread to start listening 
+           to updates from other members
+         */
         f->sock = hsock;
         f->owner = this;
         pthread_create(&thread_id,0,&ConnectionHandler::SocketHandler, (void*)f);
         pthread_detach(thread_id);
 
+        /* Add a timer task to send membership list
+           at regular intervals
+         */
         this->addTask(this);
     }
     catch(string sockException)
@@ -150,12 +160,14 @@ void* ConnectionHandler::SocketHandler(void* lp)
     int byte_count;
     char buf[1024];
     pthread_t thread_id=0;
+    /* Initialize the mutex */
     pthread_mutex_init(&mutexsum, NULL);
     
     while(1)
     {
         try
         {
+            /* receive data from other members */
             memset(buf, 0, 1024);
             byte_count = recvfrom(ptr->sock, buf, 1024, 0, (struct sockaddr*)&cli_addr, &slen);
             if(byte_count == -1)
@@ -165,7 +177,7 @@ void* ConnectionHandler::SocketHandler(void* lp)
                 logger->logError(SOCKET_ERROR, msg , &errCode);
                 //cout << "Error accepting connection " << strerror(errno) << endl;
             }
-    
+            /* deserialze the received membership list */
             string recvstr(buf);
             std::stringstream ss1; 
             ss1 << recvstr;
@@ -183,6 +195,8 @@ void* ConnectionHandler::SocketHandler(void* lp)
             ptrToSend->sock = ptr->sock;
             ptrToSend->mPtr = list;
 
+            /* Thread to update my membership list
+               and add new members */
             pthread_create(&thread_id,0,&ConnectionHandler::updateMembershipList, (void*)ptrToSend);
             pthread_detach(thread_id);
         }
@@ -204,9 +218,11 @@ void* ConnectionHandler::updateMembershipList(void* lp)
     ConnectionHandler *ptr1 = (ConnectionHandler*)ptr->owner;
     int errorcode = 0;
 
+    /* Take a lock on the membership list */
     pthread_mutex_lock (&mutexsum);
     //ptr->mPtr->printMemList();
     ptr1->getMemPtr()->updateMembershipList(ptr->mPtr,&errorcode);
+    /* Release the lock after updating the membership list */
     pthread_mutex_unlock (&mutexsum);
 
     delete ptr->mPtr;
@@ -218,13 +234,17 @@ void ConnectionHandler::executeCb()
 {
     int errorcode = 0;
     vector<string> memberIPs;
+    
+    /* Task called after every regular interval
+       Send membership list to a fraction of machines in my list
+     */
 
     this->getMemPtr()->getListOfMachinesToSendTo(FRACTION, 
                                                  &memberIPs, 
                                                  &errorcode);
 
     //cout << "Sending to : " << memberIPs.size() << endl;
-    
+    /* Set the leave bit if SIGTERM received */
     if(leave)
     {
         this->getMemPtr()->requestRetirement(&errorcode);
@@ -244,12 +264,13 @@ void ConnectionHandler::sendMemberList(vector<string> memberIPs)
     if(sendPct > 0 && (calPct < sendPct))
 #endif
     {
+        /* Increment heartbeat */
     	this->getMemPtr()->incrementHeartbeat(1,&errorcode);
-
+        /* Call process list to check for timeouts */
     	if(!leave) {
             this->getMemPtr()->processList(&errorcode);
     	}
-    
+        /* If time exceeds the time to cleanup exit the process */
     	if(leave && 
            ((time(0) - leaveTimeStamp) > this->getMemPtr()->timeToCleanupInSeconds()))
     	{
@@ -262,7 +283,7 @@ void ConnectionHandler::sendMemberList(vector<string> memberIPs)
 
         try
         {
-
+            /* Serialize the membership list */
             boost::archive::text_oarchive oa(ss);
             oa << *(this->getMemPtr());
             std::string mystring(ss.str());
@@ -275,7 +296,10 @@ void ConnectionHandler::sendMemberList(vector<string> memberIPs)
                 logger->logError(SOCKET_ERROR, msg , &errCode);
                 //cout << "Error opening socket" << strerror(errno) << std::endl;
             }
-
+            /* Write current members to a file
+               helps to find an initial list of members to talk to 
+               if the master restarts
+             */
     	    if(sends % 20 == 0 && machine_no == 1)
     	    {
     	        this->getMemPtr()->writeIPsToFile(&errorcode);
@@ -285,7 +309,7 @@ void ConnectionHandler::sendMemberList(vector<string> memberIPs)
     	    bzero(&serv_addr, sizeof(serv_addr));
     	    serv_addr.sin_family = AF_INET;
     	    serv_addr.sin_port = htons(45000);
-  
+            /* send membership list to list of member IPs */
     	    for(int i = 0; i < memberIPs.size(); i++)
     	    {
                 //cout << "Sending  Machine " << machine_no << " Sending to IP " << memberIPs.at(i) << endl;

@@ -24,7 +24,9 @@ public:
     };
 
     //~Timer();
-
+    /* task to call execute call back
+       when timer expires
+     */
     void addTask(Timer *timer)
     {
         while(1) {
@@ -40,13 +42,14 @@ public:
             timer->executeCb();
         }
     };
-
+    /* update timer value */
     void updateTimer(float time)
     {
         t = time;
     }
 
 protected:
+    /* execute call back when timer expires */
     virtual void executeCb() = 0;
 
 private:

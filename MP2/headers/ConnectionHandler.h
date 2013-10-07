@@ -43,15 +43,17 @@ namespace P2P
         public:
             /** Our Machine Number */
             int machine_no;
-
+            /** Send percentage */
             int sendPct;
         
             MembershipList *memListPtr;
-            
+            /* Store membership list ptr */
             void setMemPtr(MembershipList *memPtr)
             {
                 memListPtr = memPtr;
-            }
+            } 
+
+            /* return membership list ptr */
             MembershipList* getMemPtr()
             {
                 return memListPtr;
@@ -84,15 +86,18 @@ namespace P2P
             /** Handle connection from a client */
             static void* SocketHandler(void *lp);
   
-            /** Handle File Transfer from peers */
+            /** Handle File Update Membership List */
             
             static void* updateMembershipList(void *lp);
             
+            /* Send membership List */
             void sendMemberList(vector<string> memberList);
             
+            /* Signal handler */
             static void sendLeaveMsg(int signal);
 
         protected:
+            /* Call back funtion called when timer expires */
             virtual void executeCb();
 
     };
