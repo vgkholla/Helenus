@@ -2,3 +2,4 @@
 *.out
 *.bak
 P2P
+.DS_Store
