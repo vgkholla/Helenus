@@ -82,13 +82,13 @@ class KeyValueStore {
 	 * @param  suppressError [if true, doesn't log an errors]
 	 * @return               [the value of the key]
 	 */
-	string lookupKey(int key, int *errCode, int suppressError) {
-		string value = "";
+	boost::unordered_map<int, Value>::iterator lookupKey(int key, int *errCode, int suppressError) {
+		boost::unordered_map<int, Value>::iterator entry = keyValueStore.end();
 
 		//check for preexisting error
 		int status = checkForPreExistingError(errCode, __func__);
 		if (status == FAILURE) {
-			return value;
+			return entry;
 		}
 
 		//see if the key occurs more than once. Shoulf not happen. Comment this out after testing because this call is costly
@@ -98,21 +98,18 @@ class KeyValueStore {
 		}*/
 
 		//try to look the key up
-		boost::unordered_map<int, Value>::iterator it;
-		it = keyValueStore.find(key);
+		entry = keyValueStore.find(key);
 
 		//is the key there?
-		if(it == keyValueStore.end()) {
+		if(entry == keyValueStore.end()) {
 			//no such key
 			if(!suppressError) {
 				string msg = "Tried to lookup a key which does not exist. Key is " + Utility::intToString(key);
 				logger->logError(NO_SUCH_KEY, msg , errCode);
 			}
-		} else {//found something!
-			value = it->second.getValue();
 		}
 
-		return value;
+		return entry;
 
 	}
 
@@ -142,9 +139,9 @@ class KeyValueStore {
 		Value value = Value(valueString);
 
 		//try to look the key up first
-		string lookupString = lookupKey(key, errCode, 1);
+		boost::unordered_map<int, Value>::iterator lookupEntry = lookupKey(key, errCode, 1);
 
-		if(lookupString == "") { //key does not exist
+		if(lookupEntry == keyValueStore.end()) { //key does not exist
 			//insert
 			status = int(keyValueStore.insert(make_pair(key, value)).second);
 		} else { //key exists
@@ -203,7 +200,20 @@ class KeyValueStore {
 			return status;
 		}
 
-		//delete the key first
+		//make the value object
+		Value value = Value(valueString);
+
+		boost::unordered_map<int, Value>::iterator lookupEntry = lookupKey(key, errCode, 1);
+		
+		if(lookupEntry != keyValueStore.end()) { //key exists
+			lookupEntry->second = value;
+		} else { //key does not exist
+			string msg = "Updating key failed. Check if key exists. If not, use insert. Key is " + Utility::intToString(key);
+			logger->logError(UPDATE_FAILED, msg , errCode);
+			status = FAILURE;
+		}
+
+		/*//delete the key first
 		status = deleteKey(key, errCode);
 		if(status == FAILURE) {
 			string msg = "Updating key failed. Key is " + Utility::intToString(key);
@@ -215,7 +225,7 @@ class KeyValueStore {
 		if(status == FAILURE) {
 			string msg = "Updating key failed. Key is " + Utility::intToString(key);
 			logger->logError(UPDATE_FAILED, msg , errCode);
-		}
+		}*/
 
 		return status;
 	}
@@ -227,7 +237,15 @@ class KeyValueStore {
 	 * @return         [the value of key]
 	 */
 	string lookupKey(int key, int *errCode) {
-		return lookupKey(key, errCode, 0);
+		string value = "";
+		//get the entry
+		boost::unordered_map<int, Value>::iterator lookupEntry = lookupKey(key, errCode, 0);
+		//if lookup did not fail, extract the value
+		if(lookupEntry != keyValueStore.end()) {
+			 value = lookupEntry->second.getValue();
+		}
+
+		return value;
 	}
 
 	/**
