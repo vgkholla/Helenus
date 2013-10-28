@@ -139,32 +139,61 @@ class ErrorLog {
 	 * @return [the error type converted to string]
 	 */
 	string errorTypeToErrorString(int errType) {
+		string errMsg;
 		switch (errType) {
 			case IO_ERROR: 
-				return "IO_ERROR";
+				errMsg = "IO_ERROR";
+				break;
 			case NETWORK_ERROR:
-				return "NETWORK_ERROR";
+				errMsg = "NETWORK_ERROR";
+				break;
 			case HANDSHAKE_FAILURE:
-				return "HANDSHAKE_FAILURE";
+				errMsg = "HANDSHAKE_FAILURE";
+				break;
 			case DEST_NOT_FOUND:
-				return "DEST_NOT_FOUND";
+				errMsg = "DEST_NOT_FOUND";
+				break;
 			case INVALID_OPERATION:
-				return "INVALID_OPERATION";
+				errMsg = "INVALID_OPERATION";
+				break;
 			case INDEX_ACCESS_FAILED:
-				return "INDEX_ACCESS_FAILED";
+				errMsg = "INDEX_ACCESS_FAILED";
+				break;
 			case EMPTY_LIST:
-				return "EMPTY_LIST";
+				errMsg = "EMPTY_LIST";
+				break;
 			case SELF_ENTRY_NOT_FOUND:
-				return "SELF_ENTRY_NOT_FOUND";
+				errMsg = "SELF_ENTRY_NOT_FOUND";
+				break;
 			case ERROR_ALREADY_EXISTS:
-				return "ERROR_ALREADY_EXISTS";
-                        case SERIALIZATION_ERROR:
-                                return "SERIALIZATION_ERROR";
-                        case SOCKET_ERROR:
-                                return "SOCKET_ERROR";
+				errMsg = "ERROR_ALREADY_EXISTS";
+				break;
+            case SERIALIZATION_ERROR:
+                errMsg = "SERIALIZATION_ERROR";
+                break;
+            case SOCKET_ERROR:
+                errMsg = "SOCKET_ERROR";
+                break;
+            case NO_SUCH_KEY:
+            	errMsg = "NO_SUCH_KEY";
+            	break;
+           	case TOO_MANY_KEYS:
+           		errMsg = "TOO_MANY_KEYS";
+           		break;
+           	case KEY_EXISTS:
+           		errMsg = "KEY_EXISTS";
+           		break;
+           	case INSERT_FAILED:
+           		errMsg = "INSERT_FAILED";
+           		break;
+           	case UPDATE_FAILED:
+           		errMsg = "UPDATE_FAILED";
+           		break;
 			default:
-				return "UNKNOWN_ERROR";
+				errMsg = "UNKNOWN_ERROR";
+				break;
 		}
+		return errMsg;
 	}
 
 	/**
@@ -173,23 +202,25 @@ class ErrorLog {
 	 * @return [the debug type converted to string]
 	 */
 	string debugTypeToDebugString(int debugType) {
+		string debugMsg;
 		switch (debugType) {
 			case MEMBER_JOINED:
-				return "MEMBER_JOINED";
+				debugMsg = "MEMBER_JOINED";
 				break;
 			case MEMBER_LEFT:
-				return "MEMBER_LEFT";
+				debugMsg = "MEMBER_LEFT";
 				break;
 			case MEMBER_SUSPECTED_FAILED:
-				return "MEMBER_SUSPECTED_FAILED";
+				debugMsg = "MEMBER_SUSPECTED_FAILED";
 				break;
 			case MEMBER_FAILED:
-				return "MEMBER_FAILED";
+				debugMsg = "MEMBER_FAILED";
 				break;
 			default:
-				return "UNKNOWN_DEBUG";
+				debugMsg = "UNKNOWN_DEBUG";
 				break;
 		}
+		return debugMsg;
 	}
 	
 	/**

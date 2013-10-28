@@ -41,4 +41,11 @@
 #define SERIALIZATION_ERROR 10
 #define SOCKET_ERROR 11
 
+//key value store errors
+#define NO_SUCH_KEY 12
+#define TOO_MANY_KEYS 13
+#define KEY_EXISTS 14
+#define INSERT_FAILED 15
+#define UPDATE_FAILED 16
+
 #endif
