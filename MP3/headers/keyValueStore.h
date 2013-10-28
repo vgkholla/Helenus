@@ -80,7 +80,7 @@ class KeyValueStore {
 	 * @param  key           [key to lookup]
 	 * @param  errCode       [place tp store error codes if any]
 	 * @param  suppressError [if true, doesn't log an errors]
-	 * @return               [the value of the key]
+	 * @return               [the iterator in the hash map which points to the key]
 	 */
 	boost::unordered_map<int, Value>::iterator lookupKey(int key, int *errCode, int suppressError) {
 		boost::unordered_map<int, Value>::iterator entry = keyValueStore.end();
