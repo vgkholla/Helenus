@@ -28,6 +28,51 @@ using namespace std;
 #define END_ID "$"
 #define START_ID "^"
 
+//key value store commands
+#define INSERT "insert"
+#define LOOKUP "lookup"
+#define DELETE "delete"
+#define UPDATE "update"
+
+
+class KeyValueStoreCommand{
+
+	string operation;
+	int key;
+	string value;
+
+	public:
+
+
+	KeyValueStoreCommand(string op, int k, string valueString) {
+		operation = op;
+		key = k;
+		value = valueString;
+	}
+
+	string getOperation() {
+		return operation;
+	}
+
+	int getKey() {
+		return key;
+	}
+
+	string getValue() {
+		return value;
+	}
+
+	int isValidCommand() {
+		if(operation == INSERT || operation == UPDATE) {
+			return operation != "" && key > 0 && value != ""; 
+		} else if(operation == LOOKUP || operation == DELETE) {
+			return operation != "" && key > 0;
+		} 
+
+		return 0;
+	}
+};
+
 
 class CommandResultDetails{
 
@@ -48,6 +93,7 @@ class CommandResultDetails{
 
 class CommandLineTools {
 
+	
 	/**
 	 * [tags the file to say which machine output came from]
 	 * @param  machineID 
@@ -69,11 +115,19 @@ class CommandLineTools {
 	 * @return the cmd entered by the user
 	 */
 	static string showAndHandlePrompt(int machineID) {
-		
+		return showAndHandlePrompt(Utility::intToString(machineID));
+	}
+
+	/**
+	 * [Shows the prompt and takes the input]
+	 * @param  prompt [the prompt]
+	 * @return [the cmd entered by the user]
+	 */
+	static string showAndHandlePrompt(string prompt) {
 		string cmd;
 
 		//can customize prompt based on machine id if we want
-		cout<<machineID<<PROMPT;
+		cout<<prompt<<PROMPT;
 
 		//take user input
 		getline(cin, cmd);
@@ -360,6 +414,58 @@ class CommandLineTools {
 		//execute the command
 		executeCmd(scpCmd, details);
 	}
+
+	/*****************************KEY VALUE COMMAND PARSER******************************/
+
+	static int isValidOperation(string operation) {
+		return operation == INSERT || operation == LOOKUP || operation == UPDATE || operation == DELETE;
+	}
+
+	static KeyValueStoreCommand parseKeyValueStoreCmd(string commandString) {
+		/* command will be of the form operation(key,value)*/
+
+		//TODO: handle show here
+
+		size_t firstBracketPos = commandString.find_first_of("(");
+		if(firstBracketPos == string::npos) {
+			return KeyValueStoreCommand("", 0, "");
+		}
+
+		string operation = commandString.substr(0, firstBracketPos);
+
+		if(!isValidOperation(operation)) {
+			return KeyValueStoreCommand("", 0, "");
+		}
+
+		size_t firstCommaPos = commandString.find_first_of(",");
+		if(firstCommaPos == string::npos) {
+			if(operation == INSERT || operation == UPDATE) {
+				return KeyValueStoreCommand("", 0, "");
+			} else {
+				firstCommaPos = commandString.length() - 1;
+			}
+		}
+
+		int key = atoi(commandString.substr(firstBracketPos + 1, firstCommaPos - firstBracketPos - 1).c_str());
+		
+		string value;
+		if(operation == INSERT || operation == UPDATE) {
+			size_t lastBracketPos = commandString.find_last_of(")");
+			if(lastBracketPos == string::npos) {
+				return KeyValueStoreCommand("", 0, "");
+			}
+
+			value = commandString.substr(firstCommaPos + 1, lastBracketPos - firstCommaPos - 1);
+		} else {
+			value = "";
+		}
+
+		return KeyValueStoreCommand(operation, key, value);
+	}
+
+
+	/***********************************************************************************/
+
 };
 
 #endif

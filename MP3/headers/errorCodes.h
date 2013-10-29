@@ -48,4 +48,7 @@
 #define INSERT_FAILED 15
 #define UPDATE_FAILED 16
 
+//parsing command errors
+#define MALFORMED_COMMAND 17
+
 #endif

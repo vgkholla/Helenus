@@ -66,9 +66,10 @@ class KeyValueStore {
 	 */
 	int checkForPreExistingError(int *errCode, const char* functionName) {
 		//bail if there is already an error
-		if(*errCode != NO_ERROR) {
+		if(*errCode > ERROR_IO_LOGIC) {
 			string msg = "Unable to execute " + string(functionName) + ". A previous error with error code: " + Utility::intToString(*errCode) + " exists";
 			logger->logError(ERROR_ALREADY_EXISTS, msg , errCode);
+			*errCode = ERROR_ALREADY_EXISTS;
 			return FAILURE;
 		}
 
@@ -147,6 +148,7 @@ class KeyValueStore {
 		} else { //key exists
 			string msg = "Tried to insert a key which already exists. Key is " + Utility::intToString(key);
 			logger->logError(KEY_EXISTS, msg , errCode);
+			*errCode = KEY_EXISTS;
 			status = FAILURE;
 		}
 
@@ -210,6 +212,7 @@ class KeyValueStore {
 		} else { //key does not exist
 			string msg = "Updating key failed. Check if key exists. If not, use insert. Key is " + Utility::intToString(key);
 			logger->logError(UPDATE_FAILED, msg , errCode);
+			*errCode = UPDATE_FAILED;
 			status = FAILURE;
 		}
 

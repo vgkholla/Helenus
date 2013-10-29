@@ -189,6 +189,9 @@ class ErrorLog {
            	case UPDATE_FAILED:
            		errMsg = "UPDATE_FAILED";
            		break;
+           	case MALFORMED_COMMAND:
+           		errMsg = "MALFORMED_COMMAND";
+           		break;
 			default:
 				errMsg = "UNKNOWN_ERROR";
 				break;
