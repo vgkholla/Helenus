@@ -29,10 +29,10 @@ using namespace std;
 #define START_ID "^"
 
 //key value store commands
-#define INSERT "insert"
-#define LOOKUP "lookup"
-#define DELETE "delete"
-#define UPDATE "update"
+#define INSERT_KEY "insert"
+#define LOOKUP_KEY "lookup"
+#define DELETE_KEY "delete"
+#define UPDATE_KEY "update"
 
 
 class KeyValueStoreCommand{
@@ -63,9 +63,9 @@ class KeyValueStoreCommand{
 	}
 
 	int isValidCommand() {
-		if(operation == INSERT || operation == UPDATE) {
+		if(operation == INSERT_KEY || operation == UPDATE_KEY) {
 			return operation != "" && key > 0 && value != ""; 
-		} else if(operation == LOOKUP || operation == DELETE) {
+		} else if(operation == LOOKUP_KEY || operation == DELETE_KEY) {
 			return operation != "" && key > 0;
 		} 
 
@@ -418,7 +418,7 @@ class CommandLineTools {
 	/*****************************KEY VALUE COMMAND PARSER******************************/
 
 	static int isValidOperation(string operation) {
-		return operation == INSERT || operation == LOOKUP || operation == UPDATE || operation == DELETE;
+		return operation == INSERT_KEY || operation == LOOKUP_KEY || operation == UPDATE_KEY || operation == DELETE_KEY;
 	}
 
 	static KeyValueStoreCommand parseKeyValueStoreCmd(string commandString) {
@@ -439,7 +439,7 @@ class CommandLineTools {
 
 		size_t firstCommaPos = commandString.find_first_of(",");
 		if(firstCommaPos == string::npos) {
-			if(operation == INSERT || operation == UPDATE) {
+			if(operation == INSERT_KEY || operation == UPDATE_KEY) {
 				return KeyValueStoreCommand("", 0, "");
 			} else {
 				firstCommaPos = commandString.length() - 1;
@@ -449,7 +449,7 @@ class CommandLineTools {
 		int key = atoi(commandString.substr(firstBracketPos + 1, firstCommaPos - firstBracketPos - 1).c_str());
 		
 		string value;
-		if(operation == INSERT || operation == UPDATE) {
+		if(operation == INSERT_KEY || operation == UPDATE_KEY) {
 			size_t lastBracketPos = commandString.find_last_of(")");
 			if(lastBracketPos == string::npos) {
 				return KeyValueStoreCommand("", 0, "");

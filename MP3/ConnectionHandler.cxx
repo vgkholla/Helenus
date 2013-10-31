@@ -29,6 +29,7 @@
 #include "Timer.h"
 #include "membershipList.h"
 #include "logger.h"
+#include "utility.h"
 
 #define BUFLEN 10000
 #define SERVER_PORT 45000
@@ -53,14 +54,13 @@ ConnectionHandler::ConnectionHandler(string src,
                                      float interval):Timer(interval)
 {
     struct sockaddr_in my_addr;
-    mystruct* f = new mystruct;
+    mystruct* udp = new mystruct;
+    mystruct* tcp = new mystruct;
 
-    int hsock;
-    int * p_int ;
+    int udpSock;
+    int tcpSock;
     int err;
 
-    socklen_t addr_size = 0;
-    sockaddr_in sadr;
     pthread_t thread_id=0;
     string address;
     string port;
@@ -78,7 +78,10 @@ ConnectionHandler::ConnectionHandler(string src,
         string netId = MembershipList::getNetworkID(address);
         logger = new ErrorLog(machine_no);
         MembershipList *memList = new MembershipList(machine_no, netId, logger);
+        KeyValueStore *keyValueStore1 = new KeyValueStore(machine_no, logger);
         this->setMemPtr(memList);
+        this->setKeyValuePtr(keyValueStore1);
+        myIP = src;
         leave = false;
         
         /* Initialize signal handler */
@@ -88,50 +91,23 @@ ConnectionHandler::ConnectionHandler(string src,
         sigaction(SIGTERM, &sigAct, 0);
 
         /* Opening socket and binding and listening to it */
-        hsock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-        if(hsock == -1){
-            string msg = "Failed to open socket";
-            int errCode = 0;
-            logger->logError(SOCKET_ERROR, msg , &errCode);
-            //cout << "Error opening socket " << strerror(errno) << endl;
-            throw string("error");
-        }
-    
-        p_int = (int*)malloc(sizeof(int));
-        *p_int = 1;
-       
-        /* Setting socket options */ 
-        if( (setsockopt(hsock, SOL_SOCKET, SO_REUSEADDR, (char*)p_int, sizeof(int)) == -1 )||
-            (setsockopt(hsock, SOL_SOCKET, SO_KEEPALIVE, (char*)p_int, sizeof(int)) == -1 ) ){
-            string msg = "Failed to set socket options";
-            int errCode = 0;
-            logger->logError(SOCKET_ERROR, msg , &errCode);
-            //cout << "Error setting socket options " << strerror(errno) << endl;
-            free(p_int);
-            throw string("error");
-        }
-        free(p_int);
+        udpSock = Utility::udpSocket(address,SERVER_PORT);
+        //if(udpSock == -1)
 
-        my_addr.sin_family = AF_INET ;
-        my_addr.sin_port = htons(SERVER_PORT);
-    
-        memset(&(my_addr.sin_zero), 0, 8);
-        my_addr.sin_addr.s_addr = inet_addr(address.c_str());;
-    
-        if( bind( hsock, (sockaddr*)&my_addr, sizeof(my_addr)) == -1 ){
-            string msg = "Failed to bind to socket";
-            int errCode = 0;
-            logger->logError(SOCKET_ERROR, msg , &errCode);
-            //cout << "Error binding to socket, make sure nothing else is listening on this port " << strerror(errno) << endl;
-            throw string("error");
-        }
-
+        tcpSock = Utility::tcpSocket(address,SERVER_PORT);
+            
         /* Create a thread to start listening 
            to updates from other members
          */
-        f->sock = hsock;
-        f->owner = this;
-        pthread_create(&thread_id,0,&ConnectionHandler::SocketHandler, (void*)f);
+        udp->sock = udpSock;
+        udp->owner = this;
+
+        tcp->sock = tcpSock;
+        tcp->owner = this;
+        
+        pthread_create(&thread_id,0,&ConnectionHandler::UDPSocketHandler, (void*)udp);
+        pthread_detach(thread_id);
+        pthread_create(&thread_id,0,&ConnectionHandler::TCPSocketHandler, (void*)tcp);
         pthread_detach(thread_id);
 
         /* Add a timer task to send membership list
@@ -141,14 +117,113 @@ ConnectionHandler::ConnectionHandler(string src,
     }
     catch(string sockException)
     {
-        close(hsock);
-        hsock = -1;
+        close(udpSock);
+        udpSock = -1;
         exit(-1);
     }
     
 }
 
-void* ConnectionHandler::SocketHandler(void* lp)
+void* ConnectionHandler::TCPSocketHandler(void* lp)
+{
+    mystruct *ptr = static_cast<mystruct*>(lp);
+    ConnectionHandler *ptr1 = (ConnectionHandler*)ptr->owner;
+    socklen_t addr_size = 0;
+    int* csock;
+    sockaddr_in sadr;
+    pthread_t thread_id=0;
+
+    while(true)
+    {
+        csock = (int*)malloc(sizeof(int));
+        if((*csock = accept(ptr->sock, (sockaddr*)&sadr, &addr_size))!= -1)
+        {
+            mystruct *ptrToSend = new mystruct;
+            ptrToSend->owner = ptr->owner;
+            ptrToSend->orgsock = ptr->sock;
+            ptrToSend->sock = *csock;
+            pthread_create(&thread_id,0,&ConnectionHandler::updateKeyValue,(void*)ptrToSend);
+            pthread_detach(thread_id);
+        }
+        else
+        {
+            cout << "Error accepting connection " << strerror(errno) << endl;
+        }
+    }
+}
+
+void* ConnectionHandler::updateKeyValue(void* lp)
+{
+    mystruct *ptr = static_cast<mystruct*>(lp);
+    ConnectionHandler *ptr1 = (ConnectionHandler*)ptr->owner;
+    char buffer[1024];
+    int buffer_len = 1024;
+    string msg;
+    int bytecount;
+    long int keyToInsert;
+    int hash;
+
+    memset(buffer, 0, buffer_len);
+    if((bytecount = recv(ptr->sock, buffer, buffer_len, 0))== -1)
+    {
+        cout << "Error receiving data " << strerror(errno) << endl;
+    }
+    string received = buffer;
+    cout << "String received " << received << endl;
+    KeyValueStoreCommand command = CommandLineTools::parseKeyValueStoreCmd(received);
+    keyToInsert = command.getKey();
+    hash = Hash::calculateKeyHash(keyToInsert);
+    string ip = ptr1->getMemPtr()->getIPFromKeyHash(hash);
+    cout << "AIEEEEEE  hash " << hash << " IP " << ip << " key " << keyToInsert << endl;
+
+    
+    cout << msg << std::endl;
+    msg = "thanks";
+    strcpy(buffer,msg.c_str());
+    buffer[strlen(buffer)]='\0';
+
+    if(send(ptr->sock, buffer, strlen(buffer), 0) < 0)
+    {
+        cout << "ERROR: Failed to send file size" << strerror(errno) << endl;
+    }
+    if(ptr1->myIP == ip)
+    {
+        int errCode = 0;
+        cout << "Inserting key locally" << keyToInsert << endl;
+        cout<<"Operation is "<<command.getOperation()<<". Key is "<<command.getKey()<< ". Value is "<<command.getValue()<<endl;
+        if(command.getOperation() == INSERT_KEY) {
+            ptr1->getKeyValuePtr()->insertKeyValue(command.getKey(), command.getValue(), &errCode);
+        } else if(command.getOperation() == DELETE_KEY) {
+            ptr1->getKeyValuePtr()->deleteKey(command.getKey(), &errCode);
+        } else if(command.getOperation() == UPDATE_KEY) {
+            ptr1->getKeyValuePtr()->updateKeyValue(command.getKey(), command.getValue(), &errCode);
+        } else if(command.getOperation() == LOOKUP_KEY) {
+            cout<<ptr1->getKeyValuePtr()->lookupKey(command.getKey(), &errCode)<<endl;
+        }
+        errCode = 0;
+        cout<<endl;
+        ptr1->getKeyValuePtr()->show(&errCode);
+    }    
+    else
+    {
+        int hsock = Utility::tcpConnectSocket(ip,SERVER_PORT);
+        cout << "No match... Connecting to the right peer " << ip << " to insert key" << msg << endl;
+
+        if(send(hsock, received.c_str(), strlen(received.c_str()), 0) < 0)
+        {
+            cout << "Error sending command to server " << strerror(errno) << endl;
+        }
+
+        memset(buffer, 0, buffer_len);
+        if((bytecount = recv(hsock, buffer, buffer_len, 0))== -1)
+        {
+            cout << "Error receiving file size from server" << strerror(errno) << endl;
+        }
+    }
+    pthread_exit(NULL);
+}
+
+void* ConnectionHandler::UDPSocketHandler(void* lp)
 {
     mystruct *ptr = static_cast<mystruct*>(lp);
     ConnectionHandler *ptr1 = (ConnectionHandler*)ptr->owner;

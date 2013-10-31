@@ -12,6 +12,7 @@
 
 #include "Timer.h"
 #include "membershipList.h"
+#include "keyValueStore.h"
 
 using namespace std;
 
@@ -27,6 +28,7 @@ namespace P2P
       * Host and Port of peers
       */
     typedef struct _mystruct{
+        int orgsock;
         int sock;
         void* owner;
         string cmd;
@@ -45,8 +47,13 @@ namespace P2P
             int machine_no;
             /** Send percentage */
             int sendPct;
+            /** Our IP address */
+            string myIP;
         
             MembershipList *memListPtr;
+
+            KeyValueStore *kvStorePtr;
+
             /* Store membership list ptr */
             void setMemPtr(MembershipList *memPtr)
             {
@@ -57,6 +64,18 @@ namespace P2P
             MembershipList* getMemPtr()
             {
                 return memListPtr;
+            }
+
+            /* Store Key Value Store ptr */
+            void setKeyValuePtr(KeyValueStore *kvPtr)
+            {
+                kvStorePtr = kvPtr;
+            }
+
+            /* return Key Value Store ptr */
+            KeyValueStore* getKeyValuePtr()
+            {
+                return kvStorePtr;
             }
      
             /** Our Peers Addresses and Connectivity State */
@@ -84,7 +103,9 @@ namespace P2P
 
         private:
             /** Handle connection from a client */
-            static void* SocketHandler(void *lp);
+            static void* UDPSocketHandler(void *lp);
+            static void* TCPSocketHandler(void *lp);
+            static void* updateKeyValue(void *lp);
   
             /** Handle File Update Membership List */
             

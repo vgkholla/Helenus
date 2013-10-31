@@ -5,6 +5,7 @@
 #include <string>
 #include <ctime>
 #include <vector>
+#include <map>
 #include <algorithm>
 
 #include <boost/serialization/vector.hpp>
@@ -16,6 +17,7 @@
 #include "utility.h"
 #include "fileHandler.h"
 #include "clt.h"
+#include "Hash.h"
 
 using namespace std;
 
@@ -42,6 +44,7 @@ class MembershipDetails {
         ar & failed;
         ar & leaving;
         ar & failureTimestamp;
+        ar & nodeID;
     }
 
 	public:
@@ -59,6 +62,8 @@ class MembershipDetails {
 
 	//timestamp when suspected of failure
 	int failureTimestamp;
+        //Hashed value of the node
+        int nodeID;
 
 	MembershipDetails() {
 		id = "";
@@ -69,6 +74,7 @@ class MembershipDetails {
 		leaving = 0;
 
 		failureTimestamp=0;
+                nodeID = 0;
 	}
 };
 
@@ -77,6 +83,7 @@ class MembershipList {
 	private:
 	ErrorLog *logger;
 	vector<MembershipDetails> memList;
+        map<int,string> keyToIPMap;
 	
 	//machine id. never changes between successive reincarnations of the machine
 	int machineID;
@@ -115,6 +122,7 @@ class MembershipList {
 		for(int i =0 ; i < memList.size(); i++ ) {
 			if(entry.id == memList[i].id) {
 				removeFromList(i);
+                                keyToIPMap.erase(entry.nodeID);
 				break;
 			}
 		}
@@ -444,6 +452,7 @@ class MembershipList {
 		MembershipDetails entry;
 		entry.id = networkID;
 		entry.localTimestamp = time(0);
+                entry.nodeID = Hash::calculateNodeHash(networkID);
 		addToList(entry);
 
 		updateTimeToCleanup();
@@ -461,7 +470,7 @@ class MembershipList {
 	 */
 	void printMemList() {
 		for(int i =0 ; i < memList.size(); i++ ) {
-			cout<<"ID: "<< memList[i].id <<" Heartbeat: "<< memList[i].heartbeat<<" Timestamp: "<<memList[i].localTimestamp<<" Failed: "<<memList[i].failed<<" Leaving: "<<memList[i].leaving<<" Failure Timestamp: "<<memList[i].failureTimestamp<<endl;
+			cout<<"ID: "<< memList[i].id <<" Heartbeat: "<< memList[i].heartbeat<<" Timestamp: "<<memList[i].localTimestamp<<" Failed: "<<memList[i].failed<<" Leaving: "<<memList[i].leaving<<" Failure Timestamp: "<<memList[i].failureTimestamp<<" Node Hash ID: "<<memList[i].nodeID<<endl;
 		}
 	}
 
@@ -471,6 +480,7 @@ class MembershipList {
 	 */
 	void addToList(MembershipDetails entry) {
 		memList.push_back(entry);
+                keyToIPMap.insert(std::pair<int,string>(entry.nodeID,getIPFromNetworkID(entry.id))); 
 	}
 
 	/**
@@ -588,6 +598,17 @@ class MembershipList {
 		return status;
 
 	}
+
+        string getIPFromKeyHash(int key) {
+                map<int,string>::iterator it;
+                for (it=keyToIPMap.begin(); it!=keyToIPMap.end(); ++it){
+                        if(it->first > key){
+                                return it->second;
+                        }
+                }
+                it = keyToIPMap.begin();
+                return it->second;
+        }
 
 	/**
 	 * [used by a machine which wants to volunatarily leave the group]
