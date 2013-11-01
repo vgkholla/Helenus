@@ -77,8 +77,9 @@ ConnectionHandler::ConnectionHandler(string src,
          */
         string netId = MembershipList::getNetworkID(address);
         logger = new ErrorLog(machine_no);
-        MembershipList *memList = new MembershipList(machine_no, netId, logger);
+        //MembershipList *memList = new MembershipList(machine_no, netId, logger);
         KeyValueStore *keyValueStore1 = new KeyValueStore(machine_no, logger);
+        MembershipList *memList = new MembershipList(machine_no, netId, logger, keyValueStore1);
         this->setMemPtr(memList);
         this->setKeyValuePtr(keyValueStore1);
         myIP = src;
@@ -102,7 +103,7 @@ ConnectionHandler::ConnectionHandler(string src,
         udp->sock = udpSock;
         udp->owner = this;
 
-        tcp->sock = tcpSock;
+        tcp->orgsock = tcpSock;
         tcp->owner = this;
         
         pthread_create(&thread_id,0,&ConnectionHandler::UDPSocketHandler, (void*)udp);
@@ -136,11 +137,12 @@ void* ConnectionHandler::TCPSocketHandler(void* lp)
     while(true)
     {
         csock = (int*)malloc(sizeof(int));
-        if((*csock = accept(ptr->sock, (sockaddr*)&sadr, &addr_size))!= -1)
+        if((*csock = accept(ptr->orgsock, (sockaddr*)&sadr, &addr_size))!= -1)
         {
+            cout << "AIEEEEEEEEEEEE Accepting a connection " << endl;
             mystruct *ptrToSend = new mystruct;
             ptrToSend->owner = ptr->owner;
-            ptrToSend->orgsock = ptr->sock;
+            //ptrToSend->orgsock = ptr->orgsock;
             ptrToSend->sock = *csock;
             pthread_create(&thread_id,0,&ConnectionHandler::updateKeyValue,(void*)ptrToSend);
             pthread_detach(thread_id);
@@ -177,37 +179,32 @@ void* ConnectionHandler::updateKeyValue(void* lp)
     cout << "AIEEEEEE  hash " << hash << " IP " << ip << " key " << keyToInsert << endl;
 
     
-    cout << msg << std::endl;
-    msg = "thanks";
-    strcpy(buffer,msg.c_str());
-    buffer[strlen(buffer)]='\0';
-
-    if(send(ptr->sock, buffer, strlen(buffer), 0) < 0)
-    {
-        cout << "ERROR: Failed to send file size" << strerror(errno) << endl;
-    }
     if(ptr1->myIP == ip)
     {
         int errCode = 0;
+        int status = SUCCESS;
+        
         cout << "Inserting key locally" << keyToInsert << endl;
         cout<<"Operation is "<<command.getOperation()<<". Key is "<<command.getKey()<< ". Value is "<<command.getValue()<<endl;
         if(command.getOperation() == INSERT_KEY) {
-            ptr1->getKeyValuePtr()->insertKeyValue(command.getKey(), command.getValue(), &errCode);
+            status = ptr1->getKeyValuePtr()->insertKeyValue(command.getKey(), command.getValue(), &errCode);
+            cout << "Status " << status << endl;
         } else if(command.getOperation() == DELETE_KEY) {
-            ptr1->getKeyValuePtr()->deleteKey(command.getKey(), &errCode);
+            status = ptr1->getKeyValuePtr()->deleteKey(command.getKey(), &errCode);
         } else if(command.getOperation() == UPDATE_KEY) {
-            ptr1->getKeyValuePtr()->updateKeyValue(command.getKey(), command.getValue(), &errCode);
+            status = ptr1->getKeyValuePtr()->updateKeyValue(command.getKey(), command.getValue(), &errCode);
         } else if(command.getOperation() == LOOKUP_KEY) {
-            cout<<ptr1->getKeyValuePtr()->lookupKey(command.getKey(), &errCode)<<endl;
+            msg = ptr1->getKeyValuePtr()->lookupKey(command.getKey(), &errCode);
         }
-        errCode = 0;
-        cout<<endl;
-        ptr1->getKeyValuePtr()->show(&errCode);
+        if(command.getOperation() != LOOKUP_KEY) {
+            msg = status == SUCCESS ? "Command succeeded" : "Command failed";
+        }
     }    
     else
     {
-        int hsock = Utility::tcpConnectSocket(ip,SERVER_PORT);
+        msg = Utility::tcpConnectSocket(ip,SERVER_PORT,received);
         cout << "No match... Connecting to the right peer " << ip << " to insert key" << msg << endl;
+/*
 
         if(send(hsock, received.c_str(), strlen(received.c_str()), 0) < 0)
         {
@@ -219,7 +216,19 @@ void* ConnectionHandler::updateKeyValue(void* lp)
         {
             cout << "Error receiving file size from server" << strerror(errno) << endl;
         }
+*/
+        //close(hsock);
+        //hsock = -1;
     }
+    //msg = "thanks";
+    strcpy(buffer,msg.c_str());
+    buffer[strlen(buffer)]='\0';
+    if(send(ptr->sock, buffer, strlen(buffer), 0) < 0)
+    {
+        cout << "ERROR: Failed to send file size" << strerror(errno) << endl;
+    }
+    close(ptr->sock);
+    ptr->sock = -1;
     pthread_exit(NULL);
 }
 

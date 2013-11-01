@@ -9,7 +9,8 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include "headers/clt.h"
-#define SIZE 128
+#include "headers/utility.h"
+#define SIZE 1024
 
 using namespace std;
 
@@ -67,6 +68,7 @@ int main(int argc,
     /* Open socket to connect to
        Bugsy Inc logging system
      */
+#if 0
     hsock = socket(AF_INET, SOCK_STREAM, 0);
     if(hsock == -1){
         cout << "Error initializing socket " << strerror(errno) << endl;
@@ -92,43 +94,29 @@ int main(int argc,
 
     cout << "Connecting to Bugsy Logging System " << endl;
 
-    if( connect( hsock, (struct sockaddr*)&my_addr, sizeof(my_addr)) == -1 ){
-        if((err = errno) != EINPROGRESS){
-            cout << "Error connecting socket " << strerror(errno) << endl;
-            exit(1);
-        }
-    }
-
     buffer_len = 1024;
     memset(buffer, '\0', buffer_len);
 
-
+    if( connect( hsock, (struct sockaddr*)&my_addr, sizeof(my_addr)) == -1 ){
+        if((err = errno) != EINPROGRESS){
+            cout << "Error connecting socket " << strerror(errno) << endl;
+                exit(1);
+            }
+    }
+#endif
     string cmdToSend = CommandLineTools::showAndHandlePrompt("1");
 
     while(cmdToSend != "exit") {
         KeyValueStoreCommand command = CommandLineTools::parseKeyValueStoreCmd(cmdToSend);
 
         if(command.isValidCommand()) {
+            string msg = Utility::tcpConnectSocket(host_name.c_str(),host_port,cmdToSend);
 
-            if( (bytecount=send(hsock, cmdToSend.c_str(), strlen(cmdToSend.c_str()),0))== -1){
-                cout << "Error sending command to server " << strerror(errno) << endl;
-            	exit(1);
-            }
-
-            memset(buffer, '\0', buffer_len);
-            int count;
-            /* Receive file size */
-            if((count = recv(hsock, buffer, SIZE, 0))== -1){
-                cout << "Error receiving file size from server" << strerror(errno) << endl;
-            	exit(1);
-            }
-    	    cout << buffer << endl;
-
+    	    cout << msg << endl;
 
         } else {
             cout<<"Malformed command!"<<endl;
         }
         cmdToSend = CommandLineTools::showAndHandlePrompt("1");
     }
-    close(hsock);
 }

@@ -18,6 +18,7 @@
 #include "fileHandler.h"
 #include "clt.h"
 #include "Hash.h"
+#include "keyValueStore.h"
 
 using namespace std;
 
@@ -84,6 +85,8 @@ class MembershipList {
 	ErrorLog *logger;
 	vector<MembershipDetails> memList;
         map<int,string> keyToIPMap;
+        KeyValueStore *kvStore;
+        int myNetworkID;
 	
 	//machine id. never changes between successive reincarnations of the machine
 	int machineID;
@@ -444,15 +447,18 @@ class MembershipList {
 	/**
 	 * Constructor which asks for the machineID and the logger object
 	 */
-	MembershipList(int ID, string netID, ErrorLog *logObject) {
+	MembershipList(int ID, string netID, ErrorLog *logObject, KeyValueStore *kvStorePtr) {
 		machineID = ID;
 		logger = logObject;
 		networkID = netID;
+                kvStore = kvStorePtr;
 
 		MembershipDetails entry;
 		entry.id = networkID;
 		entry.localTimestamp = time(0);
                 entry.nodeID = Hash::calculateNodeHash(networkID);
+		myNetworkID = entry.nodeID;
+                cout << "My node has value " << myNetworkID << endl;
 		addToList(entry);
 
 		updateTimeToCleanup();
@@ -481,6 +487,7 @@ class MembershipList {
 	void addToList(MembershipDetails entry) {
 		memList.push_back(entry);
                 keyToIPMap.insert(std::pair<int,string>(entry.nodeID,getIPFromNetworkID(entry.id))); 
+                checkAndTransferKeys(entry.nodeID);
 	}
 
 	/**
@@ -608,6 +615,27 @@ class MembershipList {
                 }
                 it = keyToIPMap.begin();
                 return it->second;
+        }
+        
+        void checkAndTransferKeys(int nodeHash) {
+        	map<int,string>::iterator itLow, itUp;
+
+                itLow = keyToIPMap.find(nodeHash);
+                itUp = keyToIPMap.find(myNetworkID);
+
+                if(keyToIPMap.size() > 2) {
+ 			if(itLow == keyToIPMap.end()) {
+				kvStore->getRangeOfKeysToTransfer(nodeHash, itLow->second);
+                	}
+
+                	if(itLow->first < itUp->first) {
+				int distance = std::distance(itLow,itUp);
+				if(distance == 1) {
+                                	cout << "node joined with node hash " << nodeHash << "and distance between hash and my own hash " << myNetworkID << " is " << distance << endl;
+					kvStore->getRangeOfKeysToTransfer(nodeHash, itLow->second);
+				}
+                	}
+                }
         }
 
 	/**

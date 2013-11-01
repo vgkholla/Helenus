@@ -2,8 +2,8 @@
 #define AG_ERROR_CODES
 //don't want multiple declarations
 
-#define SUCCESS 0 //code for success
-#define FAILURE -1//code for fail
+#define SUCCESS 1 //code for success
+#define FAILURE 0//code for fail
 #define NO_ERROR 0
 #define HIGHEST_FILE_ERROR_CODE 5
 #define HIGHEST_MEMBER_DEBUG_CODE 4 

@@ -275,6 +275,12 @@ class KeyValueStore {
 		return value;
 	}
 
+        void getRangeOfKeysToTransfer(int nodeID, string ip) {
+                for(boost::unordered_map<int, Value>::iterator it = keyValueStore.begin(); it != keyValueStore.end(); it++) {
+                        cout << "AIEEEEEE Key lower than node ID " << nodeID << " is "<< Utility::intToString(it->first) << endl;
+                }
+        }
+
 	/**
 	 * [prints all entries in the key value store]
 	 * @param errCode [place to store error code]

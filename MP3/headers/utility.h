@@ -159,7 +159,7 @@ class Utility {
             return hsock;
         }
 
-        static int tcpConnectSocket(string address, int port) {
+        static string tcpConnectSocket(string address, int port, string msg) {
 
             int hsock;
             int * p_int ;
@@ -168,6 +168,9 @@ class Utility {
             socklen_t addr_size = 0;
             int* csock;
             sockaddr_in sadr;
+            char buffer[1024];
+            int buffer_len = 1024;
+            int bytecount;
 
             hsock = socket(AF_INET, SOCK_STREAM, 0);
             if(hsock == -1){
@@ -175,7 +178,6 @@ class Utility {
                 cout << msg << endl;
                 //int errCode = 0;
                 //logger->logError(SOCKET_ERROR, msg , &errCode);
-                return -1;
             }
 
             p_int = (int*)malloc(sizeof(int));
@@ -189,7 +191,6 @@ class Utility {
                 //int errCode = 0;
                 //logger->logError(SOCKET_ERROR, msg , &errCode);
                 free(p_int);
-                return -1;
             }
             free(p_int);
 
@@ -204,9 +205,23 @@ class Utility {
                     cout << msg << endl;
                     //int errCode = 0;
                     //logger->logError(SOCKET_ERROR, msg , &errCode);
-                    return -1;
             }
-            return hsock;
+
+            if(send(hsock, msg.c_str(), strlen(msg.c_str()), 0) < 0)
+            {
+//                cout << "Error sending command to server " << strerror(errno) << endl;
+            }
+
+            memset(buffer, 0, buffer_len);
+            if((bytecount = recv(hsock, buffer, buffer_len, 0))== -1)
+            {
+//                cout << "Error receiving file size from server" << strerror(errno) << endl;
+            }
+
+            close(hsock);
+            hsock = -1;
+            string result = buffer;
+            return result;
         }
 
 };
