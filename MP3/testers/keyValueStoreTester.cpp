@@ -67,14 +67,6 @@ int main() {
 		cmd = CommandLineTools::showAndHandlePrompt(machine1ID);
 	}
 
-	vector<string> commands;
-	cout<<"join commands"<<endl;
-	commands = keyValueStore1->getCommandsForJoin(10, &errCode);
-	printCommands(commands);
-	cout<<"leave commands"<<endl;
-	commands = keyValueStore1->getCommandsForLeave(&errCode);
-	printCommands(commands);
-	
 	/*
 	keyValueStore1->insertKeyValue(1, "Lorem", &errCode);
 	keyValueStore1->insertKeyValue(2, "Ipsum", &errCode);
