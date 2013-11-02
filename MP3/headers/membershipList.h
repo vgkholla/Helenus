@@ -619,7 +619,7 @@ class MembershipList {
 
 	}
 
-        string getIPFromKeyHash(int key) {
+        string getIPToSendToFromKeyHash(int key) {
                 map<int,string>::iterator it;
                 for (it=keyToIPMap.begin(); it!=keyToIPMap.end(); ++it){
                         if(it->first > key){
@@ -628,6 +628,10 @@ class MembershipList {
                 }
                 it = keyToIPMap.begin();
                 return it->second;
+        }
+
+        string getIPFromHash(int key) {
+                return keyToIPMap.find(key)->second;
         }
         
         void checkAndTransferKeys(int nodeHash) {
@@ -640,15 +644,16 @@ class MembershipList {
             int transferRequired = 0;
             
             if(keyToIPMap.size() > 1) {
-            	if(itUp->first == keyToIPMap.begin()->first && itLow->first == keyToIPMap.rbegin()->first) {
-                        cout << "New node joined has hash greater than my own hash " << endl;
-                        transferRequired = 1;
-                } else if(itLow->first < itUp->first) {
+                if(itLow->first < itUp->first) {
                     int distance = std::distance(itLow,itUp);
                     if(distance == 1) {
                         cout << "node joined with node hash " << nodeHash << "and distance between hash and my own hash " << myHash << " is " << distance << endl;
                 		transferRequired = 1;
                     }
+                }
+                else if(itUp->first == keyToIPMap.begin()->first && itLow->first == keyToIPMap.rbegin()->first) {
+                        cout << "New node joined has hash " << itLow->first << " greater than my own hash " << itUp->first << endl;
+                        transferRequired = 1;
                 }
             }
 

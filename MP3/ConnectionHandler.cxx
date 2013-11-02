@@ -178,7 +178,7 @@ void* ConnectionHandler::updateKeyValue(void* lp)
     KeyValueStoreCommand command = CommandLineTools::parseKeyValueStoreCmd(received);
     keyToInsert = command.getKey();
     hash = Hash::calculateKeyHash(keyToInsert);
-    string ip = ptr1->getMemPtr()->getIPFromKeyHash(hash);
+    string ip = ptr1->getMemPtr()->getIPToSendToFromKeyHash(hash);
     cout << "AIEEEEEE  hash " << hash << " IP " << ip << " key " << keyToInsert << endl;
 
     
@@ -198,8 +198,11 @@ void* ConnectionHandler::updateKeyValue(void* lp)
             status = ptr1->getKeyValuePtr()->updateKeyValue(command.getKey(), command.getValue(), &errCode);
         } else if(command.getOperation() == LOOKUP_KEY) {
             msg = ptr1->getKeyValuePtr()->lookupKey(command.getKey(), &errCode);
+        } else if(command.getOperation() == SHOW_KVSTORE) {
+            msg = ptr1->getKeyValuePtr()->returnAllEntries(&errCode);
         }
-        if(command.getOperation() != LOOKUP_KEY) {
+
+        if(command.getOperation() != LOOKUP_KEY && command.getOperation() != SHOW_KVSTORE) {
             msg = status == SUCCESS ? "Command succeeded" : "Command failed";
         }
     }    
@@ -364,8 +367,12 @@ void ConnectionHandler::sendMemberList(vector<string> memberIPs)
             if(coord->getReason() == JOIN)
             {
                 commands = this->getKeyValuePtr()->getCommandsForJoin(&errorcode);
-                for(i = 0; i < commands.size() ; i++)
-                    cout << commands[i] << endl;
+                string ip = this->getMemPtr()->getIPFromHash(coord->getNewMemberHash());
+                cout << "IP and hash of node to send " << ip << " " << coord->getNewMemberHash() << endl;
+                for(i = 0; i < commands.size() ; i++) {
+                    Utility::tcpConnectSocket(ip,SERVER_PORT,commands[i]);
+                    cout << "Send Command " << commands[i] << endl;
+                }
                 coord->setTransferKeysToMember(0);
             }
         }
