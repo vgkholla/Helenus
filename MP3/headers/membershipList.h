@@ -123,6 +123,7 @@ class MembershipList {
 	 * @param entry [the entry to be removed]
 	 */
 	void removeFromList(MembershipDetails entry) {
+		keyToIPMap.erase(entry.nodeID); 
 		//lookup by network id and delete
 		for(int i =0 ; i < memList.size(); i++ ) {
 			if(entry.id == memList[i].id) {
@@ -131,7 +132,16 @@ class MembershipList {
 				break;
 			}
 		}
+		printkeyToIPMap();
+                       
 
+	}
+
+	void printkeyToIPMap() {
+		cout<<"Key to IP map is: "<<endl;
+		for(map<int, string>:: iterator it = keyToIPMap.begin(); it != keyToIPMap.end(); it++) {
+			cout<<it->second<<endl;
+		}
 	}
 
 	/**
@@ -170,10 +180,6 @@ class MembershipList {
 			localEntry->localTimestamp = time(0);//timestamp right now
 			localEntry->failed = 0;//reset failure if applicable
 			localEntry->leaving = remoteEntry.leaving;//does the guy want to leave now?
-                        if(localEntry->leaving == 1)
-                        {
-                            keyToIPMap.erase(remoteEntry.nodeID); 
-                        }
 		}
 	}
 
@@ -492,8 +498,9 @@ class MembershipList {
 	 */
 	void addToList(MembershipDetails entry) {
 		memList.push_back(entry);
-                keyToIPMap.insert(std::pair<int,string>(entry.nodeID,getIPFromNetworkID(entry.id))); 
-                checkAndTransferKeys(entry.nodeID);
+        keyToIPMap.insert(std::pair<int,string>(entry.nodeID,getIPFromNetworkID(entry.id))); 
+        printkeyToIPMap();
+        checkAndTransferKeys(entry.nodeID);
 	}
 
 	/**
@@ -636,9 +643,7 @@ class MembershipList {
             	if(itUp->first == keyToIPMap.begin()->first && itLow->first == keyToIPMap.rbegin()->first) {
                         cout << "New node joined has hash greater than my own hash " << endl;
                         transferRequired = 1;
-                }
-
-                if(itLow->first < itUp->first) {
+                } else if(itLow->first < itUp->first) {
                     int distance = std::distance(itLow,itUp);
                     if(distance == 1) {
                         cout << "node joined with node hash " << nodeHash << "and distance between hash and my own hash " << myHash << " is " << distance << endl;
