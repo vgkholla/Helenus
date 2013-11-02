@@ -170,6 +170,10 @@ class MembershipList {
 			localEntry->localTimestamp = time(0);//timestamp right now
 			localEntry->failed = 0;//reset failure if applicable
 			localEntry->leaving = remoteEntry.leaving;//does the guy want to leave now?
+                        if(localEntry->leaving == 1)
+                        {
+                            keyToIPMap.erase(remoteEntry.nodeID); 
+                        }
 		}
 	}
 

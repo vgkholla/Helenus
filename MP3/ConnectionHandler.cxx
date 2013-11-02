@@ -30,6 +30,7 @@
 #include "membershipList.h"
 #include "logger.h"
 #include "utility.h"
+#include "coordinator.h"
 
 #define BUFLEN 10000
 #define SERVER_PORT 45000
@@ -78,8 +79,10 @@ ConnectionHandler::ConnectionHandler(string src,
         string netId = MembershipList::getNetworkID(address);
         logger = new ErrorLog(machine_no);
         //MembershipList *memList = new MembershipList(machine_no, netId, logger);
-        KeyValueStore *keyValueStore1 = new KeyValueStore(machine_no, logger);
-        MembershipList *memList = new MembershipList(machine_no, netId, logger, keyValueStore1);
+        Coordinator *coord = new Coordinator();
+        KeyValueStore *keyValueStore1 = new KeyValueStore(machine_no, logger, coord);
+        MembershipList *memList = new MembershipList(machine_no, netId, logger, coord);
+        this->setCoordinatorPtr(coord);
         this->setMemPtr(memList);
         this->setKeyValuePtr(keyValueStore1);
         myIP = src;
@@ -354,6 +357,18 @@ void ConnectionHandler::sendMemberList(vector<string> memberIPs)
     	if(!leave) {
             this->getMemPtr()->processList(&errorcode);
     	}
+        Coordinator *coord = this->getCoordinatorPtr();
+        if(coord->hasMessage())
+        {
+            vector<string> commands;
+            if(coord->getReason() == JOIN)
+            {
+                commands = this->getKeyValuePtr()->getCommandsForJoin(&errorcode);
+                for(i = 0; i < commands.size() ; i++)
+                    cout << commands[i] << endl;
+                coord->setTransferKeysToMember(0);
+            }
+        }
         /* If time exceeds the time to cleanup exit the process */
     	if(leave && 
            ((time(0) - leaveTimeStamp) > this->getMemPtr()->timeToCleanupInSeconds()))

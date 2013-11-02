@@ -53,6 +53,8 @@ namespace P2P
             MembershipList *memListPtr;
 
             KeyValueStore *kvStorePtr;
+       
+            Coordinator *coordPtr;
 
             /* Store membership list ptr */
             void setMemPtr(MembershipList *memPtr)
@@ -77,6 +79,19 @@ namespace P2P
             {
                 return kvStorePtr;
             }
+
+            /* Store Key Value Store ptr */
+            void setCoordinatorPtr(Coordinator *coordinatorPtr)
+            {
+                coordPtr = coordinatorPtr;
+            }
+
+            /* return Key Value Store ptr */
+            Coordinator* getCoordinatorPtr()
+            {
+                return coordPtr;
+            }
+
      
             /** Our Peers Addresses and Connectivity State */
             std::map<std::string,std::string> peers;
