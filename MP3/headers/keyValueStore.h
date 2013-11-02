@@ -16,6 +16,8 @@
 #include "utility.h"
 #include "fileHandler.h"
 #include "clt.h"
+#include "Hash.h"
+#include "coordinator.h"
 
 using namespace std;
 
@@ -57,6 +59,8 @@ class KeyValueStore {
 	int machineID;
 	//the logger object
 	ErrorLog *logger;
+	//the coordinator
+	Coordinator *coordinator;
 
 	/**
 	 * [checks for any preexisting errors before executing APIs]
@@ -118,9 +122,10 @@ class KeyValueStore {
 	/**
 	 * Constructor. Supply ID of machine which will own the key value store and the logger object of the machine
 	 */
-	KeyValueStore(int ID, ErrorLog *logObject) {
+	KeyValueStore(int ID, ErrorLog *logObject, Coordinator *coord) {
 		machineID = ID;
 		logger = logObject;
+		coordinator = coord;
 	}
 
 	/**
@@ -275,12 +280,6 @@ class KeyValueStore {
 		return value;
 	}
 
-        /*void getRangeOfKeysToTransfer(int nodeID, string ip) {
-                for(boost::unordered_map<int, Value>::iterator it = keyValueStore.begin(); it != keyValueStore.end(); it++) {
-                        cout << "AIEEEEEE Key lower than node ID " << nodeID << " is "<< Utility::intToString(it->first) << endl;
-                }
-        }*/
-
 	/**
 	 * [prints all entries in the key value store]
 	 * @param errCode [place to store error code]
@@ -327,10 +326,12 @@ class KeyValueStore {
 		return commands;
 	} 
 
-	vector<string> getCommandsForJoin(int newNodeHash, int *errCode) {
+	vector<string> getCommandsForJoin(int *errCode) {
 		vector<int> keys;
+		int newNodeHash = coordinator->getNewMemberHash();
+		int myNodeHash = coordinator->getSelfHash();
 		for(boost::unordered_map<int, Value>::iterator it = keyValueStore.begin(); it != keyValueStore.end(); it++) {
-			if(getHash(it->first) <= newNodeHash) {
+			if(getHash(it->first) <= newNodeHash || getHash(it->first) > myNodeHash) {
 				keys.push_back(it->first);
 			}
 		}
@@ -348,7 +349,7 @@ class KeyValueStore {
 	} 	
 
 	int getHash(int num) {
-		return num;
+		return Hash::calculateKeyHash(num);
 	}
 
 

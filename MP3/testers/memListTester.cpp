@@ -46,10 +46,15 @@ int main() {
 
 	int errCode = 0;
 
-	MembershipList *memList1 = new MembershipList(machine1ID, "127.0.0.1:0", logger1);
-	MembershipList *memList2 = new MembershipList(machine2ID, "127.0.0.2:0", logger2);
-	MembershipList *memList3 = new MembershipList(machine3ID, "127.0.0.3:0", logger3);
-	MembershipList *memList4 = new MembershipList(machine4ID, "127.0.0.4:0", logger4);
+	Coordinator *coord1 = new Coordinator();
+	Coordinator *coord2 = new Coordinator();
+	Coordinator *coord3 = new Coordinator();
+	Coordinator *coord4 = new Coordinator();
+
+	MembershipList *memList1 = new MembershipList(machine1ID, "127.0.0.1:0", logger1, coord1);
+	MembershipList *memList2 = new MembershipList(machine2ID, "127.0.0.2:0", logger2, coord2);
+	MembershipList *memList3 = new MembershipList(machine3ID, "127.0.0.3:0", logger3, coord3);
+	MembershipList *memList4 = new MembershipList(machine4ID, "127.0.0.4:0", logger4, coord4);
 
 
 	createList1(memList1);

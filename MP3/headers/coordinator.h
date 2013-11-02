@@ -4,6 +4,9 @@
 #include <iostream>
 #include <string>
 
+//reasons for passing message
+#define JOIN "join"
+
 using namespace std;
 
 class Coordinator {
@@ -15,12 +18,14 @@ class Coordinator {
 
 	//for join
 	int newMemberHash;//if reason is join, the hash of new member;
+	int selfHash; //Node's hash
 
 	public:
 	Coordinator() {
 		transferKeysToMember = 0;
 		reason = "";
 		newMemberHash = 0;
+		selfHash = 0;
 	}
 
 	int hasMessage() {
@@ -36,6 +41,10 @@ class Coordinator {
 		return newMemberHash;
 	}
 
+	int getSelfHash() {
+		return selfHash;
+	}
+
 	//setters
 	void setTransferKeysToMember(int status) {
 		transferKeysToMember = status;
@@ -47,6 +56,10 @@ class Coordinator {
 
 	void setNewMemberHash(int hash) {
 		newMemberHash = hash;
+	}
+
+	void setSelfHash(int hash) {
+		selfHash = hash;
 	}
 };
 

@@ -19,6 +19,7 @@
 #include "clt.h"
 #include "Hash.h"
 #include "keyValueStore.h"
+#include "coordinator.h"
 
 using namespace std;
 
@@ -75,7 +76,7 @@ class MembershipDetails {
 		leaving = 0;
 
 		failureTimestamp=0;
-                nodeID = 0;
+        nodeID = 0;
 	}
 };
 
@@ -84,9 +85,10 @@ class MembershipList {
 	private:
 	ErrorLog *logger;
 	vector<MembershipDetails> memList;
-        map<int,string> keyToIPMap;
-        KeyValueStore *kvStore;
-        int myNetworkID;
+    map<int,string> keyToIPMap;
+    KeyValueStore *kvStore;
+    Coordinator *coordinator;
+    int myHash;
 	
 	//machine id. never changes between successive reincarnations of the machine
 	int machineID;
@@ -447,18 +449,18 @@ class MembershipList {
 	/**
 	 * Constructor which asks for the machineID and the logger object
 	 */
-	MembershipList(int ID, string netID, ErrorLog *logObject, KeyValueStore *kvStorePtr) {
+	MembershipList(int ID, string netID, ErrorLog *logObject, Coordinator *coord) {
 		machineID = ID;
 		logger = logObject;
 		networkID = netID;
-                kvStore = kvStorePtr;
+		coordinator = coord;
 
 		MembershipDetails entry;
 		entry.id = networkID;
 		entry.localTimestamp = time(0);
-                entry.nodeID = Hash::calculateNodeHash(networkID);
-		myNetworkID = entry.nodeID;
-                cout << "My node has value " << myNetworkID << endl;
+        entry.nodeID = Hash::calculateNodeHash(networkID);
+		myHash = entry.nodeID;
+        cout << "My node has value " << myHash << endl;
 		addToList(entry);
 
 		updateTimeToCleanup();
@@ -620,22 +622,35 @@ class MembershipList {
         void checkAndTransferKeys(int nodeHash) {
         	map<int,string>::iterator itLow, itUp;
 
-                itLow = keyToIPMap.find(nodeHash);
-                itUp = keyToIPMap.find(myNetworkID);
+            itLow = keyToIPMap.find(nodeHash);
+            string ip = itLow->second;
+            itUp = keyToIPMap.find(myHash);
 
-                if(keyToIPMap.size() > 2) {
- 			if(itLow == keyToIPMap.end()) {
-				kvStore->getRangeOfKeysToTransfer(nodeHash, itLow->second);
-                	}
-
-                	if(itLow->first < itUp->first) {
-				int distance = std::distance(itLow,itUp);
-				if(distance == 1) {
-                                	cout << "node joined with node hash " << nodeHash << "and distance between hash and my own hash " << myNetworkID << " is " << distance << endl;
-					kvStore->getRangeOfKeysToTransfer(nodeHash, itLow->second);
-				}
-                	}
+            int transferRequired = 0;
+            
+            if(keyToIPMap.size() > 1) {
+            	if(itUp->first == keyToIPMap.begin()->first && itLow->first == keyToIPMap.rbegin()->first) {
+                        cout << "New node joined has hash greater than my own hash " << endl;
+                        transferRequired = 1;
                 }
+
+                if(itLow->first < itUp->first) {
+                    int distance = std::distance(itLow,itUp);
+                    if(distance == 1) {
+                        cout << "node joined with node hash " << nodeHash << "and distance between hash and my own hash " << myHash << " is " << distance << endl;
+                		transferRequired = 1;
+                    }
+                }
+            }
+
+            if(transferRequired == 1) {
+            	coordinator->setTransferKeysToMember(transferRequired);
+            	coordinator->setNewMemberHash(nodeHash);
+            	coordinator->setSelfHash(myHash);
+            	coordinator->setReason(JOIN);
+            }
+ 			
+          
         }
 
 	/**
@@ -836,7 +851,6 @@ class MembershipList {
 	static string getNetworkID(string ip) {
 		return ip + ":" + Utility::intToString(time(0));
 	}
-
 
 	
 };

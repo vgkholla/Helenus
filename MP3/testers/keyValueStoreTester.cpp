@@ -28,11 +28,16 @@ int main() {
 	*/
 
 
-	KeyValueStore *keyValueStore1 = new KeyValueStore(machine1ID, logger1);
+	Coordinator *coord1 = new Coordinator();
+	Coordinator *coord2 = new Coordinator();
+	Coordinator *coord3 = new Coordinator();
+	Coordinator *coord4 = new Coordinator();
+
+	KeyValueStore *keyValueStore1 = new KeyValueStore(machine1ID, logger1, coord1);
 	
-	/*KeyValueStore *keyValueStore2 = new KeyValueStore(machine2ID, logger2);
-	KeyValueStore *keyValueStore3 = new KeyValueStore(machine3ID, logger3);
-	KeyValueStore *keyValueStore4 = new KeyValueStore(machine4ID, logger4);
+	/*KeyValueStore *keyValueStore2 = new KeyValueStore(machine2ID, logger2, coord2);
+	KeyValueStore *keyValueStore3 = new KeyValueStore(machine3ID, logger3, coord3);
+	KeyValueStore *keyValueStore4 = new KeyValueStore(machine4ID, logger4, coord4);
 	*/
 
 
