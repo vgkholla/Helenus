@@ -33,6 +33,7 @@ using namespace std;
 #define LOOKUP_KEY "lookup"
 #define DELETE_KEY "delete"
 #define UPDATE_KEY "update"
+#define SHOW_KVSTORE "show"
 
 
 class KeyValueStoreCommand{
@@ -63,13 +64,17 @@ class KeyValueStoreCommand{
 	}
 
 	int isValidCommand() {
+		int commandValid = 0;
+		
 		if(operation == INSERT_KEY || operation == UPDATE_KEY) {
-			return operation != "" && key > 0 && value != ""; 
+			commandValid = operation != "" && key > 0 && value != ""; 
 		} else if(operation == LOOKUP_KEY || operation == DELETE_KEY) {
-			return operation != "" && key > 0;
-		} 
+			commandValid = operation != "" && key > 0;
+		} else if(operation == SHOW_KVSTORE) {
+			commandValid = 1;
+		}
 
-		return 0;
+		return commandValid;
 	}
 };
 
@@ -424,14 +429,17 @@ class CommandLineTools {
 	static KeyValueStoreCommand parseKeyValueStoreCmd(string commandString) {
 		/* command will be of the form operation(key,value)*/
 
-		//TODO: handle show here
+		string operation = "";
 
 		size_t firstBracketPos = commandString.find_first_of("(");
 		if(firstBracketPos == string::npos) {
-			return KeyValueStoreCommand("", 0, "");
+			if(commandString == SHOW_KVSTORE) {
+				operation = SHOW_KVSTORE;
+			}
+			return KeyValueStoreCommand(operation, 0, "");
 		}
 
-		string operation = commandString.substr(0, firstBracketPos);
+		operation = commandString.substr(0, firstBracketPos);
 
 		if(!isValidOperation(operation)) {
 			return KeyValueStoreCommand("", 0, "");

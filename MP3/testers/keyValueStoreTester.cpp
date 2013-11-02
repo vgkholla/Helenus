@@ -6,6 +6,11 @@
 
 using namespace std;
 
+void printCommands(vector<string> commands) {
+	for(int i =0; i < commands.size(); i++) {
+		cout<<commands[i]<<endl;
+	}
+}
 
 int main() {
 
@@ -38,18 +43,18 @@ int main() {
 
 		if(command.isValidCommand()) {
 			cout<<"Operation is "<<command.getOperation()<<". Key is "<<command.getKey()<< ". Value is "<<command.getValue()<<endl;
-			if(command.getOperation() == INSERT) {
+			if(command.getOperation() == INSERT_KEY) {
 				keyValueStore1->insertKeyValue(command.getKey(), command.getValue(), &errCode);
-			} else if(command.getOperation() == DELETE) {
+			} else if(command.getOperation() == DELETE_KEY) {
 				keyValueStore1->deleteKey(command.getKey(), &errCode);
-			} else if(command.getOperation() == UPDATE) {
+			} else if(command.getOperation() == UPDATE_KEY) {
 				keyValueStore1->updateKeyValue(command.getKey(), command.getValue(), &errCode);
-			} else if(command.getOperation() == LOOKUP) {
+			} else if(command.getOperation() == LOOKUP_KEY) {
 				cout<<keyValueStore1->lookupKey(command.getKey(), &errCode)<<endl;
+			} else if(command.getOperation() == SHOW_KVSTORE) {
+				keyValueStore1->show(&errCode);
 			}
-			errCode = 0;
-			cout<<endl;
-			keyValueStore1->show(&errCode);
+			
 		} else {
 			cout<<"Malformed command!"<<endl;
 		}
@@ -57,8 +62,13 @@ int main() {
 		cmd = CommandLineTools::showAndHandlePrompt(machine1ID);
 	}
 
-
-
+	vector<string> commands;
+	cout<<"join commands"<<endl;
+	commands = keyValueStore1->getCommandsForJoin(10, &errCode);
+	printCommands(commands);
+	cout<<"leave commands"<<endl;
+	commands = keyValueStore1->getCommandsForLeave(&errCode);
+	printCommands(commands);
 	
 	/*
 	keyValueStore1->insertKeyValue(1, "Lorem", &errCode);

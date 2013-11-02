@@ -275,11 +275,11 @@ class KeyValueStore {
 		return value;
 	}
 
-        void getRangeOfKeysToTransfer(int nodeID, string ip) {
+        /*void getRangeOfKeysToTransfer(int nodeID, string ip) {
                 for(boost::unordered_map<int, Value>::iterator it = keyValueStore.begin(); it != keyValueStore.end(); it++) {
                         cout << "AIEEEEEE Key lower than node ID " << nodeID << " is "<< Utility::intToString(it->first) << endl;
                 }
-        }
+        }*/
 
 	/**
 	 * [prints all entries in the key value store]
@@ -299,6 +299,58 @@ class KeyValueStore {
 			cout<<entries<<endl;
 		}
 	}
+
+	string buildCommand(string operation, int key, string value) {
+		string command = operation + "(" + Utility::intToString(key);
+		if(operation == UPDATE_KEY || operation == INSERT_KEY) {
+			command += ",";
+			command += value;
+		}
+		command += ")";
+
+		return command;
+	}
+
+	vector<string> getCommands(string operation, vector<int> keys, int *errCode) {
+		vector<string> commands;
+		string command = "";
+		string value = "";
+		int key;
+
+		for(int i = 0; i < keys.size(); i++){
+			key = keys[i];
+			value = lookupKey(key, errCode);
+			command = buildCommand(operation, key, value);
+			commands.push_back(command);
+		}
+
+		return commands;
+	} 
+
+	vector<string> getCommandsForJoin(int newNodeHash, int *errCode) {
+		vector<int> keys;
+		for(boost::unordered_map<int, Value>::iterator it = keyValueStore.begin(); it != keyValueStore.end(); it++) {
+			if(getHash(it->first) <= newNodeHash) {
+				keys.push_back(it->first);
+			}
+		}
+
+		return getCommands(INSERT_KEY, keys, errCode);
+	} 
+
+	vector<string> getCommandsForLeave(int *errCode) {
+		vector<int> keys;
+		for(boost::unordered_map<int, Value>::iterator it = keyValueStore.begin(); it != keyValueStore.end(); it++) {
+			keys.push_back(it->first);
+		}
+
+		return getCommands(INSERT_KEY, keys, errCode);
+	} 	
+
+	int getHash(int num) {
+		return num;
+	}
+
 
 };
 

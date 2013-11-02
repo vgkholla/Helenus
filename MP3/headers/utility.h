@@ -60,10 +60,10 @@ class Utility {
 
             int hsock;
             int * p_int ;
-    	    int err;
+    	    //int err;
             struct sockaddr_in my_addr;
-    	    socklen_t addr_size = 0;
-    	    sockaddr_in sadr;
+    	    //socklen_t addr_size = 0;
+    	    //sockaddr_in sadr;
 
             hsock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
             if(hsock == -1){
@@ -106,16 +106,16 @@ class Utility {
 
 	    int hsock;
 	    int * p_int ;
-	    int err;
+	    //int err;
             struct sockaddr_in my_addr;
-	    socklen_t addr_size = 0;
-	    int* csock;
-	    sockaddr_in sadr;
+	    //socklen_t addr_size = 0;
+	    //int* csock;
+	   // sockaddr_in sadr;
 
             hsock = socket(AF_INET, SOCK_STREAM, 0);
             if(hsock == -1){
                 string msg = "Failed to open socket";
-                cout << msg << endl;
+                //cout << msg << endl;
                 //int errCode = 0;
                 //logger->logError(SOCKET_ERROR, msg , &errCode);
                 return -1;
@@ -128,7 +128,7 @@ class Utility {
             if( (setsockopt(hsock, SOL_SOCKET, SO_REUSEADDR, (char*)p_int, sizeof(int)) == -1 )||
                 (setsockopt(hsock, SOL_SOCKET, SO_KEEPALIVE, (char*)p_int, sizeof(int)) == -1 ) ){
                 string msg = "Failed to set socket options";
-                cout << msg << endl;
+                //cout << msg << endl;
                 //int errCode = 0;
                 //logger->logError(SOCKET_ERROR, msg , &errCode);
                 free(p_int);
@@ -144,14 +144,14 @@ class Utility {
 
             if( bind(hsock, (sockaddr*)&my_addr, sizeof(my_addr)) == -1 ){
                 string msg = "Failed to bind to socket";
-                cout << msg << endl;
+                //cout << msg << endl;
                 //int errCode = 0;
                 //logger->logError(SOCKET_ERROR, msg , &errCode);
                 return -1;
             }
             if(listen(hsock, 10) == -1 ){
                 string msg = "Failed to listen on socket";
-                cout << msg << endl;
+                //cout << msg << endl;
                 //int errCode = 0;
                 //logger->logError(SOCKET_ERROR, msg , &errCode);
                 return -1;
@@ -163,11 +163,11 @@ class Utility {
 
             int hsock;
             int * p_int ;
-            int err;
+            //int err;
             struct sockaddr_in my_addr;
-            socklen_t addr_size = 0;
-            int* csock;
-            sockaddr_in sadr;
+            //socklen_t addr_size = 0;
+            //int* csock;
+            //sockaddr_in sadr;
             char buffer[1024];
             int buffer_len = 1024;
             int bytecount;
@@ -175,7 +175,7 @@ class Utility {
             hsock = socket(AF_INET, SOCK_STREAM, 0);
             if(hsock == -1){
                 string msg = "Failed to open socket";
-                cout << msg << endl;
+                //cout << msg << endl;
                 //int errCode = 0;
                 //logger->logError(SOCKET_ERROR, msg , &errCode);
             }
@@ -187,7 +187,7 @@ class Utility {
             if( (setsockopt(hsock, SOL_SOCKET, SO_REUSEADDR, (char*)p_int, sizeof(int)) == -1 )||
                 (setsockopt(hsock, SOL_SOCKET, SO_KEEPALIVE, (char*)p_int, sizeof(int)) == -1 ) ){
                 string msg = "Failed to set socket options";
-                cout << msg << endl;
+                //cout << msg << endl;
                 //int errCode = 0;
                 //logger->logError(SOCKET_ERROR, msg , &errCode);
                 free(p_int);
@@ -202,7 +202,7 @@ class Utility {
 
 	    if( connect( hsock, (struct sockaddr*)&my_addr, sizeof(my_addr)) == -1 ){
                     string msg = "Failed to Connect";
-                    cout << msg << endl;
+                    //cout << msg << endl;
                     //int errCode = 0;
                     //logger->logError(SOCKET_ERROR, msg , &errCode);
             }
