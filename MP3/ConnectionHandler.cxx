@@ -385,6 +385,14 @@ void ConnectionHandler::sendMemberList(vector<string> memberIPs)
     	if(leave && 
            ((time(0) - leaveTimeStamp) > this->getMemPtr()->timeToCleanupInSeconds()))
     	{
+            //send the keys to another machine
+            vector<string> commands = this->getKeyValuePtr()->getCommandsForLeave(&errorcode);
+            string ip = this->getMemPtr()->getIPofSuccessor();
+            for(i = 0; i < commands.size() ; i++) {
+                Utility::tcpConnectSocket(ip,SERVER_PORT,commands[i]);
+                cout << "Send Command " << commands[i] << endl;
+            }
+
             string msg = "Elvis has left the building";
             int errCode = 0;
             logger->logDebug(MEMBER_LEFT, msg , &errCode);

@@ -123,7 +123,9 @@ class MembershipList {
 	 * @param entry [the entry to be removed]
 	 */
 	void removeFromList(MembershipDetails entry) {
-		keyToIPMap.erase(entry.nodeID); 
+		if(keyToIPMap.find(entry.nodeID) != keyToIPMap.end()) {
+			keyToIPMap.erase(entry.nodeID); 
+		}
 		//lookup by network id and delete
 		for(int i =0 ; i < memList.size(); i++ ) {
 			if(entry.id == memList[i].id) {
@@ -180,6 +182,11 @@ class MembershipList {
 			localEntry->localTimestamp = time(0);//timestamp right now
 			localEntry->failed = 0;//reset failure if applicable
 			localEntry->leaving = remoteEntry.leaving;//does the guy want to leave now?
+			if(remoteEntry.leaving == 1) {
+				if(keyToIPMap.find(remoteEntry.nodeID) != keyToIPMap.end()) {
+					keyToIPMap.erase(remoteEntry.nodeID); 
+				}
+			}
 		}
 	}
 
@@ -619,53 +626,74 @@ class MembershipList {
 
 	}
 
-        string getIPToSendToFromKeyHash(int key) {
-                map<int,string>::iterator it;
-                for (it=keyToIPMap.begin(); it!=keyToIPMap.end(); ++it){
-                        if(it->first > key){
-                                return it->second;
-                        }
-                }
-                it = keyToIPMap.begin();
-                return it->second;
-        }
-
-        string getIPFromHash(int key) {
-                return keyToIPMap.find(key)->second;
-        }
-        
-        void checkAndTransferKeys(int nodeHash) {
-        	map<int,string>::iterator itLow, itUp;
-
-            itLow = keyToIPMap.find(nodeHash);
-            string ip = itLow->second;
-            itUp = keyToIPMap.find(myHash);
-
-            int transferRequired = 0;
-            
-            if(keyToIPMap.size() > 1) {
-                if(itLow->first < itUp->first) {
-                    int distance = std::distance(itLow,itUp);
-                    if(distance == 1) {
-                        cout << "node joined with node hash " << nodeHash << "and distance between hash and my own hash " << myHash << " is " << distance << endl;
-                		transferRequired = 1;
+    string getIPToSendToFromKeyHash(int key) {
+            map<int,string>::iterator it;
+            for (it=keyToIPMap.begin(); it!=keyToIPMap.end(); ++it){
+                    if(it->first > key){
+                            return it->second;
                     }
-                }
-                else if(itUp->first == keyToIPMap.begin()->first && itLow->first == keyToIPMap.rbegin()->first) {
-                        cout << "New node joined has hash " << itLow->first << " greater than my own hash " << itUp->first << endl;
-                        transferRequired = 1;
-                }
             }
+            it = keyToIPMap.begin();
+            return it->second;
+    }
 
-            if(transferRequired == 1) {
-            	coordinator->setTransferKeysToMember(transferRequired);
-            	coordinator->setNewMemberHash(nodeHash);
-            	coordinator->setSelfHash(myHash);
-            	coordinator->setReason(JOIN);
+    string getIPFromHash(int key) {
+            return keyToIPMap.find(key)->second;
+    }
+
+    string getIPofSuccessor() {
+    	map<int,string>::iterator it;
+    	map<int,string>::iterator successor = keyToIPMap.end();
+
+		for (it=keyToIPMap.begin(); it!=keyToIPMap.end(); ++it){
+	        if(it->first == myHash) {
+	        	it++;
+	        	successor = it;
+	        	break;
+	        }
+		}
+
+    	if(successor == keyToIPMap.end()) {
+    		successor = keyToIPMap.begin();
+    	}
+
+    	cout << "IP and hash of node to send before leaving " << successor->second << " " << successor->first << endl;
+
+    	return successor->second;
+    }
+    
+    void checkAndTransferKeys(int nodeHash) {
+    	map<int,string>::iterator itLow, itUp;
+
+        itLow = keyToIPMap.find(nodeHash);
+        string ip = itLow->second;
+        itUp = keyToIPMap.find(myHash);
+
+        int transferRequired = 0;
+        
+        if(keyToIPMap.size() > 1) {
+            if(itLow->first < itUp->first) {
+                int distance = std::distance(itLow,itUp);
+                if(distance == 1) {
+                    cout << "node joined with node hash " << nodeHash << "and distance between hash and my own hash " << myHash << " is " << distance << endl;
+            		transferRequired = 1;
+                }
             }
- 			
-          
+            else if(itUp->first == keyToIPMap.begin()->first && itLow->first == keyToIPMap.rbegin()->first) {
+                    cout << "New node joined has hash " << itLow->first << " greater than my own hash " << itUp->first << endl;
+                    transferRequired = 1;
+            }
         }
+
+        if(transferRequired == 1) {
+        	coordinator->setTransferKeysToMember(transferRequired);
+        	coordinator->setNewMemberHash(nodeHash);
+        	coordinator->setSelfHash(myHash);
+        	coordinator->setReason(JOIN);
+        }
+			
+      
+    }
 
 	/**
 	 * [used by a machine which wants to volunatarily leave the group]

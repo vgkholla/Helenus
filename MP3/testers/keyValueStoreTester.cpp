@@ -29,9 +29,9 @@ int main() {
 
 
 	Coordinator *coord1 = new Coordinator();
-	Coordinator *coord2 = new Coordinator();
+	/*Coordinator *coord2 = new Coordinator();
 	Coordinator *coord3 = new Coordinator();
-	Coordinator *coord4 = new Coordinator();
+	Coordinator *coord4 = new Coordinator();*/
 
 	KeyValueStore *keyValueStore1 = new KeyValueStore(machine1ID, logger1, coord1);
 	
