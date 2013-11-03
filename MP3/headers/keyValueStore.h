@@ -336,7 +336,13 @@ class KeyValueStore {
 			}
 		}
 
-		return getCommands(INSERT_KEY, keys, errCode);
+		vector <string>commands = getCommands(INSERT_KEY, keys, errCode);
+		
+		for(int i=0; i < keys.size(); i++) {
+			deleteKey(keys[i], errCode);
+		}
+
+		return commands;
 	} 
 
 	vector<string> getCommandsForLeave(int *errCode) {

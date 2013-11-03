@@ -177,15 +177,16 @@ void* ConnectionHandler::updateKeyValue(void* lp)
     cout << "String received " << received << endl;
     KeyValueStoreCommand command = CommandLineTools::parseKeyValueStoreCmd(received);
     
+    string ip;
     if(command.getOperation() != SHOW_KVSTORE) {
         keyToInsert = command.getKey();
         hash = Hash::calculateKeyHash(keyToInsert);
-        string ip = ptr1->getMemPtr()->getIPToSendToFromKeyHash(hash);
+        ip = ptr1->getMemPtr()->getIPToSendToFromKeyHash(hash);
         cout << "AIEEEEEE  hash " << hash << " IP " << ip << " key " << keyToInsert << endl;
     } else {
         ip = ptr1->myIP;
     }
-    
+
     if(ptr1->myIP == ip)
     {
         int errCode = 0;
