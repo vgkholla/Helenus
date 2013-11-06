@@ -24,7 +24,7 @@ int main(int argc,
     }
     int host_port;
     string host_name;
-    string cmd;
+    string cmd = "";
     /* Receive Command Line Input for dest IP
        dest port and optional command
      */
@@ -47,7 +47,11 @@ int main(int argc,
         }
         else if (std::string(argv[i]) == "--command") {
             if (i + 1 < argc) { 
-                cmd = argv[++i]; 
+                cmd += argv[++i];
+                while(i + 1 < argc) {
+                    cmd += " ";
+                    cmd += argv[++i];
+                }
             } else { 
                   std::cerr << "--command option requires one argument." << std::endl;
                 return 1;
@@ -55,6 +59,7 @@ int main(int argc,
         }
     }
 
+#if 0
     struct sockaddr_in my_addr;
 
     char buffer[1024];
@@ -68,7 +73,7 @@ int main(int argc,
     /* Open socket to connect to
        Bugsy Inc logging system
      */
-#if 0
+
     hsock = socket(AF_INET, SOCK_STREAM, 0);
     if(hsock == -1){
         cout << "Error initializing socket " << strerror(errno) << endl;
@@ -104,8 +109,14 @@ int main(int argc,
             }
     }
 #endif
-    string cmdToSend = CommandLineTools::showAndHandlePrompt("1");
+    string cmdToSend;
+    if(cmd == "") {
+        cmdToSend = CommandLineTools::showAndHandlePrompt("1");
+    } else {
+        cmdToSend = cmd;
+    }
 
+    cout<<cmd<<endl;
     while(cmdToSend != "exit") {
         KeyValueStoreCommand command = CommandLineTools::parseKeyValueStoreCmd(cmdToSend);
 
@@ -117,6 +128,11 @@ int main(int argc,
         } else {
             cout<<"Malformed command!"<<endl;
         }
-        cmdToSend = CommandLineTools::showAndHandlePrompt("1");
+
+        if(cmd == "") {
+            cmdToSend = CommandLineTools::showAndHandlePrompt("1");
+        } else {
+            cmdToSend = "exit";
+        }
     }
 }
