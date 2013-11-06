@@ -142,7 +142,6 @@ void* ConnectionHandler::TCPSocketHandler(void* lp)
         csock = (int*)malloc(sizeof(int));
         if((*csock = accept(ptr->orgsock, (sockaddr*)&sadr, &addr_size))!= -1)
         {
-            cout << "AIEEEEEEEEEEEE Accepting a connection " << endl;
             mystruct *ptrToSend = new mystruct;
             ptrToSend->owner = ptr->owner;
             //ptrToSend->orgsock = ptr->orgsock;
@@ -174,15 +173,21 @@ void* ConnectionHandler::updateKeyValue(void* lp)
         cout << "Error receiving data " << strerror(errno) << endl;
     }
     string received = buffer;
-    cout << "String received " << received << endl;
     KeyValueStoreCommand command = CommandLineTools::parseKeyValueStoreCmd(received);
+    
+    cout<<"Operation is " 
+        << command.getOperation() 
+        << ". Key is "
+        << command.getKey()
+        << ". Value is "
+        <<command.getValue()
+        <<endl;
     
     string ip;
     if(command.getOperation() != SHOW_KVSTORE) {
         keyToInsert = command.getKey();
         hash = Hash::calculateKeyHash(keyToInsert);
         ip = ptr1->getMemPtr()->getIPToSendToFromKeyHash(hash);
-        cout << "AIEEEEEE  hash " << hash << " IP " << ip << " key " << keyToInsert << endl;
     } else {
         ip = ptr1->myIP;
     }
@@ -192,11 +197,9 @@ void* ConnectionHandler::updateKeyValue(void* lp)
         int errCode = 0;
         int status = SUCCESS;
         
-        cout << "Inserting key locally" << keyToInsert << endl;
-        cout<<"Operation is "<<command.getOperation()<<". Key is "<<command.getKey()<< ". Value is "<<command.getValue()<<endl;
+        cout << "Correct node found, inserting the key locally" << endl;
         if(command.getOperation() == INSERT_KEY) {
             status = ptr1->getKeyValuePtr()->insertKeyValue(command.getKey(), command.getValue(), &errCode);
-            cout << "Status " << status << endl;
         } else if(command.getOperation() == DELETE_KEY) {
             status = ptr1->getKeyValuePtr()->deleteKey(command.getKey(), &errCode);
         } else if(command.getOperation() == UPDATE_KEY) {
@@ -213,25 +216,11 @@ void* ConnectionHandler::updateKeyValue(void* lp)
     }    
     else
     {
+        cout << "Key hash higher than my Node Hash.. Connecting to the right node with ip" 
+             << ip 
+             << endl;
         msg = Utility::tcpConnectSocket(ip,SERVER_PORT,received);
-        cout << "No match... Connecting to the right peer " << ip << " to insert key" << msg << endl;
-/*
-
-        if(send(hsock, received.c_str(), strlen(received.c_str()), 0) < 0)
-        {
-            cout << "Error sending command to server " << strerror(errno) << endl;
-        }
-
-        memset(buffer, 0, buffer_len);
-        if((bytecount = recv(hsock, buffer, buffer_len, 0))== -1)
-        {
-            cout << "Error receiving file size from server" << strerror(errno) << endl;
-        }
-*/
-        //close(hsock);
-        //hsock = -1;
     }
-    //msg = "thanks";
     strcpy(buffer,msg.c_str());
     buffer[strlen(buffer)]='\0';
     if(send(ptr->sock, buffer, strlen(buffer), 0) < 0)
@@ -373,10 +362,12 @@ void ConnectionHandler::sendMemberList(vector<string> memberIPs)
             {
                 commands = this->getKeyValuePtr()->getCommandsForJoin(&errorcode);
                 string ip = this->getMemPtr()->getIPFromHash(coord->getNewMemberHash());
-                cout << "IP and hash of node to send " << ip << " " << coord->getNewMemberHash() << endl;
+                cout << "Moving my keys to the new node in the system with IP " 
+                     << ip 
+                     << " and hash " << coord->getNewMemberHash() 
+                     << endl;
                 for(i = 0; i < commands.size() ; i++) {
                     Utility::tcpConnectSocket(ip,SERVER_PORT,commands[i]);
-                    cout << "Send Command " << commands[i] << endl;
                 }
                 coord->setTransferKeysToMember(0);
             }
@@ -390,7 +381,6 @@ void ConnectionHandler::sendMemberList(vector<string> memberIPs)
             string ip = this->getMemPtr()->getIPofSuccessor();
             for(i = 0; i < commands.size() ; i++) {
                 Utility::tcpConnectSocket(ip,SERVER_PORT,commands[i]);
-                cout << "Send Command " << commands[i] << endl;
             }
 
             string msg = "Elvis has left the building";

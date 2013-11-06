@@ -657,7 +657,7 @@ class MembershipList {
     		successor = keyToIPMap.begin();
     	}
 
-    	cout << "IP and hash of node to send before leaving " << successor->second << " " << successor->first << endl;
+    	cout << "Leaving and moving the keys to my successor with IP " << successor->second << " and hash " << successor->first << endl;
 
     	return successor->second;
     }
@@ -675,12 +675,18 @@ class MembershipList {
             if(itLow->first < itUp->first) {
                 int distance = std::distance(itLow,itUp);
                 if(distance == 1) {
-                    cout << "node joined with node hash " << nodeHash << "and distance between hash and my own hash " << myHash << " is " << distance << endl;
-            		transferRequired = 1;
+                    cout << "New node joined with node hash " 
+                         << nodeHash 
+                         << "and distance between the new hash and my own hash " 
+                         << myHash 
+                         << " is " 
+                         << distance 
+                         << endl;
+            	    transferRequired = 1;
                 }
             }
             else if(itUp->first == keyToIPMap.begin()->first && itLow->first == keyToIPMap.rbegin()->first) {
-                    cout << "New node joined has hash " << itLow->first << " greater than my own hash " << itUp->first << endl;
+                    cout << "New node joined with node hash " << itLow->first << " added at the end of the ring " << endl;
                     transferRequired = 1;
             }
         }
