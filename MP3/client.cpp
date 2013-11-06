@@ -115,8 +115,7 @@ int main(int argc,
     } else {
         cmdToSend = cmd;
     }
-
-    cout<<cmd<<endl;
+    
     while(cmdToSend != "exit") {
         KeyValueStoreCommand command = CommandLineTools::parseKeyValueStoreCmd(cmdToSend);
 
