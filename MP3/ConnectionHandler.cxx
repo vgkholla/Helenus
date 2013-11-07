@@ -199,7 +199,7 @@ void* ConnectionHandler::updateKeyValue(void* lp)
         int errCode = 0;
         int status = SUCCESS;
         
-        cout << "Correct node found, inserting the key locally" << endl;
+        cout << "Correct node found, performing " << command.getOperation() << " locally" << endl;
         if(command.getOperation() == INSERT_KEY) {
             status = ptr1->getKeyValuePtr()->insertKeyValue(command.getKey(), command.getValue(), &errCode);
         } else if(command.getOperation() == DELETE_KEY) {
@@ -226,7 +226,6 @@ void* ConnectionHandler::updateKeyValue(void* lp)
              << endl;
         msg = Utility::tcpConnectSocket(ip,SERVER_PORT,received);
     }
-    cout << "AIEEEEEEEEEEE str length " << msg.length() << endl;
     strcpy(buffer,msg.c_str());
     buffer[strlen(buffer)]='\0';
     if(send(ptr->sock, buffer, strlen(buffer), 0) < 0)

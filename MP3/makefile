@@ -3,7 +3,7 @@ PROGRAM = P2P
 INCLUDEDIRS = \
 	-Iheaders/ \
 
-LIBS =-lpthread 
+LIBS =-lpthread -lcrypto
 
 STD_LIBS =-lboost_serialization
 
