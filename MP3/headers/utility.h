@@ -168,8 +168,8 @@ class Utility {
             //socklen_t addr_size = 0;
             //int* csock;
             //sockaddr_in sadr;
-            char buffer[1024];
-            int buffer_len = 1024;
+            char buffer[12288];
+            int buffer_len = 12288;
             int bytecount;
 
             hsock = socket(AF_INET, SOCK_STREAM, 0);

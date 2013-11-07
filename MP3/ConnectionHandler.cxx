@@ -160,8 +160,8 @@ void* ConnectionHandler::updateKeyValue(void* lp)
 {
     mystruct *ptr = static_cast<mystruct*>(lp);
     ConnectionHandler *ptr1 = (ConnectionHandler*)ptr->owner;
-    char buffer[1024];
-    int buffer_len = 1024;
+    char buffer[12288];
+    int buffer_len = 12288;
     string msg;
     int bytecount;
     long int keyToInsert;
@@ -181,6 +181,8 @@ void* ConnectionHandler::updateKeyValue(void* lp)
         << command.getKey()
         << ". Value is "
         <<command.getValue()
+        << ". Key Hash is "
+        << Hash::calculateKeyHash(keyToInsert)
         <<endl;
     
     string ip;
@@ -224,6 +226,7 @@ void* ConnectionHandler::updateKeyValue(void* lp)
              << endl;
         msg = Utility::tcpConnectSocket(ip,SERVER_PORT,received);
     }
+    cout << "AIEEEEEEEEEEE str length " << msg.length() << endl;
     strcpy(buffer,msg.c_str());
     buffer[strlen(buffer)]='\0';
     if(send(ptr->sock, buffer, strlen(buffer), 0) < 0)
