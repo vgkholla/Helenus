@@ -270,13 +270,16 @@ class KeyValueStore {
 			return value;
 		}
 
+		int i = 0;
 		for(boost::unordered_map<int, Value>::iterator it = keyValueStore.begin(); it != keyValueStore.end(); it++) {
 			value += Utility::intToString(it->first);
 			value += ":";
 			value += it->second.getValue();
 			value += "\n";
+			i++;
 		}
 
+		cout<<"Entries: "<<i<<endl;
 		return value;
 	}
 

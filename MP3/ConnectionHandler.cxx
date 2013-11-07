@@ -207,7 +207,10 @@ void* ConnectionHandler::updateKeyValue(void* lp)
         } else if(command.getOperation() == LOOKUP_KEY) {
             msg = ptr1->getKeyValuePtr()->lookupKey(command.getKey(), &errCode);
         } else if(command.getOperation() == SHOW_KVSTORE) {
-            msg = ptr1->getKeyValuePtr()->returnAllEntries(&errCode);
+            msg = "Key value store entries:\n";
+            msg += ptr1->getKeyValuePtr()->returnAllEntries(&errCode);
+            msg += "Membership list:\n";
+            msg += ptr1->getMemPtr()->getkeyToIPMapDetails();
         }
 
         if(command.getOperation() != LOOKUP_KEY && command.getOperation() != SHOW_KVSTORE) {

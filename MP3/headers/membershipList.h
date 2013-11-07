@@ -139,11 +139,10 @@ class MembershipList {
 
 	}
 
+
 	void printkeyToIPMap() {
 		cout<<"Key to IP map is: "<<endl;
-		for(map<int, string>:: iterator it = keyToIPMap.begin(); it != keyToIPMap.end(); it++) {
-			cout<<it->second<<endl;
-		}
+		cout<<getkeyToIPMapDetails();
 	}
 
 	/**
@@ -871,6 +870,16 @@ class MembershipList {
 		delete details;
 		return status;
 
+	}
+
+	string getkeyToIPMapDetails() {
+		string mapString = "";
+		for(map<int, string>:: iterator it = keyToIPMap.begin(); it != keyToIPMap.end(); it++) {
+			mapString += it->second;
+			mapString += "\n";
+		}
+
+		return mapString;
 	}
 
     /**
