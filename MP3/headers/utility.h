@@ -11,9 +11,6 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include "logger.h"
-#include "errorCodes.h"
-
 using namespace std;
 
 class Utility {
