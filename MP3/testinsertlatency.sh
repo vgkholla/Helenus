@@ -4,7 +4,7 @@ CLIENT_BINARY=$1
 DEST_ADDR=$2
 DEST_PORT=$3
 
-for i in {1..100} 
+for i in {1..1000} 
 do 
 	KEY=$RANDOM
 	VALUE=$RANDOM

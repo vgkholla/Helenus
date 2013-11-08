@@ -15,6 +15,8 @@ do
 	./$CLIENT_BINARY --dst $DEST_ADDR --port $DEST_PORT --command insert\($KEY,$VALUE\)
 done
 
+sleep 10
+
 ./$CLIENT_BINARY --dst $DEST_ADDR --port $DEST_PORT --command show | grep '[0-9]:[0-9]' | wc -l >> keycount
 ./$CLIENT_BINARY --dst $DEST_ADDR1 --port $DEST_PORT --command show | grep '[0-9]:[0-9]' | wc -l >> keycount
 ./$CLIENT_BINARY --dst $DEST_ADDR2 --port $DEST_PORT --command show | grep '[0-9]:[0-9]' | wc -l >> keycount
