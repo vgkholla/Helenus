@@ -17,3 +17,4 @@ do
 	echo "Inserting $KEY, $VALUE"
 	./$CLIENT_BINARY --dst $DEST_ADDR --port $DEST_PORT --command insert\($KEY,$VALUE\)
 done
+
