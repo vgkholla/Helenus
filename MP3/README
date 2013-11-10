@@ -1,0 +1,57 @@
+For running the My Key Value Store System.
+
+#create the directory for member log files
+
+The log files reside at /tmp/ag. Create the folder and the member writes it logs at this path as 
+machine.i.log, where i is an unique number assigned to each member
+
+Ensure that boost libraries are installed in the system.
+
+#run make in the root folder
+
+The make creates an output binary P2P
+
+#bring up the members
+
+Representative command follows
+nohup ./P2P --src source_ip --machineno i --interval t --sendpct pct &
+
+where 
+    - source_ip is the members own IP address
+    - i is the unique member number (It is 1 for the master)
+    - t is the time interval to send membership list
+    - pct is use to simulate percentage loss of packets. (To use this feature, -DTESTING flag needs to be 
+      set in the makefile in the CXXFLAGS field)
+
+The client performs the following functions
+
+    - insert keys
+    - lookup keys
+    - update keys
+    - delete keys
+
+Compile the client using the command
+
+g++ client.cpp -o client
+
+Run the client with the server IP and port as arguments
+
+./client --dst <DST IP> --port 45000
+
+This provides a prompt
+For insert
+>>insert(key,value)
+For lookup
+>>lookup(key)
+For delete
+>>delete(key)
+For update
+>>update(key,new value)
+
+To see keys and values at the servers, run "show" command at the prompt.
+
+To cause a member to leave
+
+Run ps -ef | grep P2P to find the pid of the member
+
+Issue the commmand kill -15 "process_pid" to send a signal to the member to leave the group.
