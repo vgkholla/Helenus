@@ -213,16 +213,6 @@ void* ConnectionHandler::updateKeyValue(void* lp)
     /* Parse and find out the command type */
     KeyValueStoreCommand command = CommandLineTools::parseKeyValueStoreCmd(received);
     
-    cout<<"Operation is " 
-        << command.getOperation() 
-        << ". Key is "
-        << command.getKey()
-        << ". Value is "
-        <<command.getValue()
-        << ". Key Hash is "
-        << Hash::calculateKeyHash(keyToInsert)
-        <<endl;
-    
     string ip;
     if(command.getOperation() != SHOW_KVSTORE) {
         /* Find the key */
@@ -234,6 +224,17 @@ void* ConnectionHandler::updateKeyValue(void* lp)
     } else {
         ip = ptr1->myIP;
     }
+
+    cout<<"Operation is "
+        << command.getOperation()
+        << ". Key is "
+        << command.getKey()
+        << ". Value is "
+        <<command.getValue()
+        << ". Key Hash is "
+        << Hash::calculateKeyHash(keyToInsert)
+        <<endl;
+
 
     if(ptr1->myIP == ip)
     {
