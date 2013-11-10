@@ -96,12 +96,6 @@ class KeyValueStore {
 			return entry;
 		}
 
-		//see if the key occurs more than once. Shoulf not happen. Comment this out after testing because this call is costly
-		/*if(keyValueStore.count(key) > 1) {
-			string msg = "Found more than one matching key while trying to lookup! Key is " + Utility::intToString(key);
-			logger->logError(TOO_MANY_KEYS, msg, errCode);
-		}*/
-
 		//try to look the key up
 		entry = keyValueStore.find(key);
 
@@ -221,20 +215,6 @@ class KeyValueStore {
 			status = FAILURE;
 		}
 
-		/*//delete the key first
-		status = deleteKey(key, errCode);
-		if(status == FAILURE) {
-			string msg = "Updating key failed. Key is " + Utility::intToString(key);
-			logger->logError(UPDATE_FAILED, msg , errCode);
-		}
-
-		//reinsert with new value
-		status = insertKeyValue(key, valueString, errCode);
-		if(status == FAILURE) {
-			string msg = "Updating key failed. Key is " + Utility::intToString(key);
-			logger->logError(UPDATE_FAILED, msg , errCode);
-		}*/
-
 		return status;
 	}
 
@@ -270,6 +250,7 @@ class KeyValueStore {
 			return value;
 		}
 
+		//build all the entries in the store as key:value
 		int i = 0;
 		for(boost::unordered_map<int, Value>::iterator it = keyValueStore.begin(); it != keyValueStore.end(); it++) {
 			value += Utility::intToString(it->first);
@@ -288,11 +269,13 @@ class KeyValueStore {
 	 * @param errCode [place to store error code]
 	 */
 	void show(int *errCode) {
+		//check for preexisting error
 		int status = checkForPreExistingError(errCode, __func__);
 		if (status == FAILURE) {
 			cout<<"Unable to show entries in the key value store. Check log for details"<<endl;
 		}
 
+		//get and print entries
 		string entries = returnAllEntries(errCode);
 		if (entries == "") {
 			cout<<"No entries in key value store or unable to show entries. Check the log to see if there are any errors"<<endl;
@@ -302,7 +285,15 @@ class KeyValueStore {
 		}
 	}
 
+	/**
+	 * [builds a command to perform a certain operation]
+	 * @param  operation [the operation to be performed]
+	 * @param  key       [the key]
+	 * @param  value     [the value]
+	 * @return           [the built command]
+	 */
 	string buildCommand(string operation, int key, string value) {
+		//builds a well formed command of the form operation(key,value)
 		string command = operation + "(" + Utility::intToString(key);
 		if(operation == UPDATE_KEY || operation == INSERT_KEY) {
 			command += ",";
@@ -313,34 +304,54 @@ class KeyValueStore {
 		return command;
 	}
 
+	/**
+	 *	[builds commands to perform an operation on a set of keys]
+	 * @param  operation [the operation to be performed]
+	 * @param  keys      [the set of keys]
+	 * @return           [the built commands]
+	 */
 	vector<string> getCommands(string operation, vector<int> keys, int *errCode) {
 		vector<string> commands;
 		string command = "";
 		string value = "";
 		int key;
 
+		//iterate over the keys and form well formed commands for each of them
 		for(int i = 0; i < keys.size(); i++){
 			key = keys[i];
+			//lookup the value
 			value = lookupKey(key, errCode);
+			//build command
 			command = buildCommand(operation, key, value);
+			//add to list
 			commands.push_back(command);
 		}
 
 		return commands;
 	} 
 
+	/**
+	 *	[builds commands for keys to be sent when a machine joins]
+	 * @param  errCode 	 [space to store error code]
+	 * @return           [the built commands]
+	 */
 	vector<string> getCommandsForJoin(int *errCode) {
 		vector<int> keys;
 		int newNodeHash = coordinator->getNewMemberHash();
 		int myNodeHash = coordinator->getSelfHash();
+		//comparison to see which keys need to go to the new joinee
+		//goes through all of its keys to see if there are any that are lesser than the hash of the new machine (on the ring)
 		for(boost::unordered_map<int, Value>::iterator it = keyValueStore.begin(); it != keyValueStore.end(); it++) {
 			if(getHash(it->first) <= newNodeHash || getHash(it->first) > myNodeHash) {
+			//second condition is for the special case of first machine on the ring
 				keys.push_back(it->first);
 			}
 		}
 
+		//get well formed commands for the keys selected, to send to the new machine
 		vector <string>commands = getCommands(INSERT_KEY, keys, errCode);
 		
+		//delete from this store
 		for(int i=0; i < keys.size(); i++) {
 			deleteKey(keys[i], errCode);
 		}
@@ -348,15 +359,27 @@ class KeyValueStore {
 		return commands;
 	} 
 
+	/**
+	 *	[builds commands for keys to be sent when this machine leaves]
+	 * @param  errCode 	 [space to store error code]
+	 * @return           [the built commands]
+	 */
 	vector<string> getCommandsForLeave(int *errCode) {
 		vector<int> keys;
+		//get all the keys in this store
 		for(boost::unordered_map<int, Value>::iterator it = keyValueStore.begin(); it != keyValueStore.end(); it++) {
 			keys.push_back(it->first);
 		}
 
+		//create well formed commands for each key, to be sent to successor machine
 		return getCommands(INSERT_KEY, keys, errCode);
 	} 	
 
+	/**
+	 * [gets the hash of a key]
+	 * @param  num [the key]
+	 * @return     [the hash]
+	 */
 	int getHash(int num) {
 		return Hash::calculateKeyHash(num);
 	}

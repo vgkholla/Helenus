@@ -11,9 +11,8 @@ using namespace std;
 
 class Coordinator {
 
-	//coordinator messages between KVStore and MemList
-	//for transfer of keys
-	int transferKeysToMember;//0 signifies no, 1 signfies that some keys need to be transfered
+	//coordinator messages between KVStore and MemList for transfer of keys
+	int transferKeysToMember;//0 signifies no keys need to transfered, 1 signfies that some keys need to be transfered
 	string reason; //the reason for transfer. can be join.
 
 	//for join
@@ -28,6 +27,10 @@ class Coordinator {
 		selfHash = 0;
 	}
 
+	/**
+	 * [checking whther any message has to be read]
+	 * @return [returns whther a message is available]
+	 */
 	int hasMessage() {
 		return transferKeysToMember;//keep adding ors here if there are different coordinator messages
 	}
