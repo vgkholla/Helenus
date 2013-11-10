@@ -94,13 +94,14 @@ ConnectionHandler::ConnectionHandler(string src,
         sigAct.sa_handler = ConnectionHandler::sendLeaveMsg;
         sigaction(SIGTERM, &sigAct, 0);
 
-        /* Opening socket and binding and listening to it */
+        /* Opening a udp socket for membershiplist exchange */
         udpSock = Utility::udpSocket(address,SERVER_PORT);
         //if(udpSock == -1)
 
+        /* Opening a tcp socket for key value store operation */
         tcpSock = Utility::tcpSocket(address,SERVER_PORT);
             
-        /* Create a thread to start listening 
+        /* Create threads to start listening 
            to updates from other members
          */
         udp->sock = udpSock;
@@ -139,6 +140,9 @@ void* ConnectionHandler::TCPSocketHandler(void* lp)
 
     while(true)
     {
+        /* accept connection from peers for
+         * exchange of key and value pairs
+         */
         csock = (int*)malloc(sizeof(int));
         if((*csock = accept(ptr->orgsock, (sockaddr*)&sadr, &addr_size))!= -1)
         {
@@ -168,11 +172,13 @@ void* ConnectionHandler::updateKeyValue(void* lp)
     int hash;
 
     memset(buffer, 0, buffer_len);
+    /* Accept the key vlaue store command */
     if((bytecount = recv(ptr->sock, buffer, buffer_len, 0))== -1)
     {
         cout << "Error receiving data " << strerror(errno) << endl;
     }
     string received = buffer;
+    /* Parse and find out the command type */
     KeyValueStoreCommand command = CommandLineTools::parseKeyValueStoreCmd(received);
     
     cout<<"Operation is " 
@@ -187,8 +193,11 @@ void* ConnectionHandler::updateKeyValue(void* lp)
     
     string ip;
     if(command.getOperation() != SHOW_KVSTORE) {
+        /* Find the key */
         keyToInsert = command.getKey();
+        /* Calculate the key hash */
         hash = Hash::calculateKeyHash(keyToInsert);
+        /* Find the IP of the node where the key value pair should reside */
         ip = ptr1->getMemPtr()->getIPToSendToFromKeyHash(hash);
     } else {
         ip = ptr1->myIP;
@@ -196,6 +205,9 @@ void* ConnectionHandler::updateKeyValue(void* lp)
 
     if(ptr1->myIP == ip)
     {
+        /* If IP same as my IP 
+         * Perform the necessary operation 
+         * on the local node */
         int errCode = 0;
         int status = SUCCESS;
         
@@ -221,6 +233,7 @@ void* ConnectionHandler::updateKeyValue(void* lp)
     }    
     else
     {
+        /* If the IP is different, connect to the correct node */
         cout << "Key hash higher than my Node Hash.. Connecting to the right node with ip" 
              << ip 
              << endl;
@@ -228,6 +241,7 @@ void* ConnectionHandler::updateKeyValue(void* lp)
     }
     strcpy(buffer,msg.c_str());
     buffer[strlen(buffer)]='\0';
+    /* reply back with success or failure, or the key value pair in case of a show command */
     if(send(ptr->sock, buffer, strlen(buffer), 0) < 0)
     {
         cout << "ERROR: Failed to send file size" << strerror(errno) << endl;
@@ -359,12 +373,14 @@ void ConnectionHandler::sendMemberList(vector<string> memberIPs)
     	if(!leave) {
             this->getMemPtr()->processList(&errorcode);
     	}
+        /* Check if a new member joined and if I have to move my keys to him */
         Coordinator *coord = this->getCoordinatorPtr();
         if(coord->hasMessage())
         {
             vector<string> commands;
             if(coord->getReason() == JOIN)
             {
+                /* Find the IP of the node to move the keys to */
                 commands = this->getKeyValuePtr()->getCommandsForJoin(&errorcode);
                 string ip = this->getMemPtr()->getIPFromHash(coord->getNewMemberHash());
                 cout << "Moving my keys to the new node in the system with IP " 
@@ -381,7 +397,7 @@ void ConnectionHandler::sendMemberList(vector<string> memberIPs)
     	if(leave && 
            ((time(0) - leaveTimeStamp) > this->getMemPtr()->timeToCleanupInSeconds()))
     	{
-            //send the keys to another machine
+            //send the keys to another machine if I am leaving the system
             vector<string> commands = this->getKeyValuePtr()->getCommandsForLeave(&errorcode);
             string ip = this->getMemPtr()->getIPofSuccessor();
             for(i = 0; i < commands.size() ; i++) {

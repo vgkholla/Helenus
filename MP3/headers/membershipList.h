@@ -85,10 +85,10 @@ class MembershipList {
 	private:
 	ErrorLog *logger;
 	vector<MembershipDetails> memList;
-    map<int,string> keyToIPMap;
-    KeyValueStore *kvStore;
-    Coordinator *coordinator;
-    int myHash;
+        map<int,string> keyToIPMap;
+        KeyValueStore *kvStore;
+        Coordinator *coordinator;
+        int myHash;
 	
 	//machine id. never changes between successive reincarnations of the machine
 	int machineID;
@@ -627,15 +627,18 @@ class MembershipList {
 
     string getIPToSendToFromKeyHash(int key) {
             map<int,string>::iterator it;
+            /* Find the IP of the machine with hash higher than the key to be stored */
             for (it=keyToIPMap.begin(); it!=keyToIPMap.end(); ++it){
                     if(it->first > key){
                             return it->second;
                     }
             }
+            /* if no such node found, the correct node must be the first node */
             it = keyToIPMap.begin();
             return it->second;
     }
 
+    /* Return the IP from a node hash */
     string getIPFromHash(int key) {
             return keyToIPMap.find(key)->second;
     }
@@ -661,6 +664,7 @@ class MembershipList {
     	return successor->second;
     }
     
+    /* Check if the distance between new node and me is one */ 
     void checkAndTransferKeys(int nodeHash) {
     	map<int,string>::iterator itLow, itUp;
 
@@ -669,8 +673,9 @@ class MembershipList {
         itUp = keyToIPMap.find(myHash);
 
         int transferRequired = 0;
-        
+        /* there should be more than one node */
         if(keyToIPMap.size() > 1) {
+          
             if(itLow->first < itUp->first) {
                 int distance = std::distance(itLow,itUp);
                 if(distance == 1) {
