@@ -121,6 +121,7 @@ namespace P2P
             static void* UDPSocketHandler(void *lp);
             static void* TCPSocketHandler(void *lp);
             static void* updateKeyValue(void *lp);
+            static void* showCommandPrompt(void *lp);
   
             /** Handle File Update Membership List */
             

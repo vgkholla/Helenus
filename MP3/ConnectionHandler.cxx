@@ -57,6 +57,7 @@ ConnectionHandler::ConnectionHandler(string src,
     struct sockaddr_in my_addr;
     mystruct* udp = new mystruct;
     mystruct* tcp = new mystruct;
+    mystruct* show = new mystruct;
 
     int udpSock;
     int tcpSock;
@@ -109,10 +110,13 @@ ConnectionHandler::ConnectionHandler(string src,
 
         tcp->orgsock = tcpSock;
         tcp->owner = this;
+        show->owner = this;
         
         pthread_create(&thread_id,0,&ConnectionHandler::UDPSocketHandler, (void*)udp);
         pthread_detach(thread_id);
         pthread_create(&thread_id,0,&ConnectionHandler::TCPSocketHandler, (void*)tcp);
+        pthread_detach(thread_id);
+        pthread_create(&thread_id,0,&ConnectionHandler::showCommandPrompt, (void*)tcp);
         pthread_detach(thread_id);
 
         /* Add a timer task to send membership list
@@ -127,6 +131,34 @@ ConnectionHandler::ConnectionHandler(string src,
         exit(-1);
     }
     
+}
+
+void* ConnectionHandler::showCommandPrompt(void* lp)
+{
+    mystruct *ptr = static_cast<mystruct*>(lp);
+    ConnectionHandler *ptr1 = (ConnectionHandler*)ptr->owner;
+
+    string cmdToSend;
+    int errCode;
+    cmdToSend = CommandLineTools::showAndHandlePrompt("1");
+
+    while(cmdToSend != "exit") {
+        KeyValueStoreCommand command = CommandLineTools::parseKeyValueStoreCmd(cmdToSend);
+
+        if(command.isValidCommand()) {
+            string msg;
+            msg = "Key value store entries:\n";
+            msg += ptr1->getKeyValuePtr()->returnAllEntries(&errCode);
+            msg += "Membership list:\n";
+            msg += ptr1->getMemPtr()->getkeyToIPMapDetails();
+            cout << msg << endl;
+        } else {
+            cout<<"Malformed command!"<<endl;
+        }
+
+        cmdToSend = CommandLineTools::showAndHandlePrompt("1");
+    }
+    pthread_exit(NULL);
 }
 
 void* ConnectionHandler::TCPSocketHandler(void* lp)
