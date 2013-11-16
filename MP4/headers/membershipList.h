@@ -85,10 +85,10 @@ class MembershipList {
 	private:
 	ErrorLog *logger;
 	vector<MembershipDetails> memList;
-        map<int,string> keyToIPMap;
-        KeyValueStore *kvStore;
-        Coordinator *coordinator;
-        int myHash;
+    map<int,string> keyToIPMap;
+    KeyValueStore *kvStore;
+    Coordinator *coordinator;
+    int myHash;
 	
 	//machine id. never changes between successive reincarnations of the machine
 	int machineID;
@@ -459,6 +459,48 @@ class MembershipList {
 
 	}
 
+	/* Check if the distance between new node and me is one */ 
+    void checkAndTransferKeys(int nodeHash) {
+    	map<int,string>::iterator itLow, itUp;
+
+        itLow = keyToIPMap.find(nodeHash);
+        string ip = itLow->second;
+        itUp = keyToIPMap.find(myHash);
+
+        int transferRequired = 0;
+        /* there should be more than one node */
+        if(keyToIPMap.size() > 1) {
+          
+            if(itLow->first < itUp->first) {
+                int distance = std::distance(itLow,itUp);
+                if(distance == 1) {
+                    cout << "New node joined with node hash " 
+                         << nodeHash 
+                         << "and distance between the new hash and my own hash " 
+                         << myHash 
+                         << " is " 
+                         << distance 
+                         << endl;
+            	    transferRequired = 1;
+                }
+            }
+            else if(itUp->first == keyToIPMap.begin()->first && itLow->first == keyToIPMap.rbegin()->first) {
+                    cout << "New node joined with node hash " << itLow->first << " added at the end of the ring " << endl;
+                    transferRequired = 1;
+            }
+        }
+
+        if(transferRequired == 1) {
+        	//build the message
+        	Message message;
+        	message.setReason(REASON_JOIN);
+        	message.setSelfHash(myHash);
+        	message.setNewMemberHash(nodeHash);
+        	//store it in the coordinator
+        	coordinator->pushMessage(message);
+        }
+			
+    }
 
 	public:
 	
@@ -662,49 +704,6 @@ class MembershipList {
     	cout << "Leaving and moving the keys to my successor with IP " << successor->second << " and hash " << successor->first << endl;
 
     	return successor->second;
-    }
-    
-    /* Check if the distance between new node and me is one */ 
-    void checkAndTransferKeys(int nodeHash) {
-    	map<int,string>::iterator itLow, itUp;
-
-        itLow = keyToIPMap.find(nodeHash);
-        string ip = itLow->second;
-        itUp = keyToIPMap.find(myHash);
-
-        int transferRequired = 0;
-        /* there should be more than one node */
-        if(keyToIPMap.size() > 1) {
-          
-            if(itLow->first < itUp->first) {
-                int distance = std::distance(itLow,itUp);
-                if(distance == 1) {
-                    cout << "New node joined with node hash " 
-                         << nodeHash 
-                         << "and distance between the new hash and my own hash " 
-                         << myHash 
-                         << " is " 
-                         << distance 
-                         << endl;
-            	    transferRequired = 1;
-                }
-            }
-            else if(itUp->first == keyToIPMap.begin()->first && itLow->first == keyToIPMap.rbegin()->first) {
-                    cout << "New node joined with node hash " << itLow->first << " added at the end of the ring " << endl;
-                    transferRequired = 1;
-            }
-        }
-
-        if(transferRequired == 1) {
-        	//build the message
-        	Message message;
-        	message.setReason(REASON_JOIN);
-        	message.setSelfHash(myHash);
-        	message.setNewMemberHash(nodeHash);
-        	//store it in the coordinator
-        	coordinator->pushMessage(message);
-        }
-			
     }
 
 	/**
