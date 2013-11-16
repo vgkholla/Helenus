@@ -696,13 +696,15 @@ class MembershipList {
         }
 
         if(transferRequired == 1) {
-        	coordinator->setTransferKeysToMember(transferRequired);
-        	coordinator->setNewMemberHash(nodeHash);
-        	coordinator->setSelfHash(myHash);
-        	coordinator->setReason(JOIN);
+        	//build the message
+        	Message message;
+        	message.setReason(REASON_JOIN);
+        	message.setSelfHash(myHash);
+        	message.setNewMemberHash(nodeHash);
+        	//store it in the coordinator
+        	coordinator->pushMessage(message);
         }
 			
-      
     }
 
 	/**

@@ -6,7 +6,7 @@
 #include <syslog.h>
 #include <list>
 
-#include "ConnectionHandler.h"
+#include "headers/ConnectionHandler.h"
 
 using namespace std;
 using namespace P2P;

@@ -51,4 +51,7 @@
 //parsing command errors
 #define MALFORMED_COMMAND 17
 
+//coordinator errors
+#define UNRECOGNIZED_MESSAGE_REASON 18
+
 #endif

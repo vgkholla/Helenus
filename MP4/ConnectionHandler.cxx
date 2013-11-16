@@ -25,12 +25,12 @@
 #include <boost/mpl/inserter.hpp>
 #include <boost/iostreams/filtering_stream.hpp>
 
-#include "ConnectionHandler.h"
-#include "Timer.h"
-#include "membershipList.h"
-#include "logger.h"
-#include "utility.h"
-#include "coordinator.h"
+#include "headers/ConnectionHandler.h"
+#include "headers/Timer.h"
+#include "headers/membershipList.h"
+#include "headers/logger.h"
+#include "headers/utility.h"
+#include "headers/coordinator.h"
 
 #define BUFLEN 10000
 #define SERVER_PORT 45000
@@ -54,19 +54,20 @@ ConnectionHandler::ConnectionHandler(string src,
                                      int sendPercentage,
                                      float interval):Timer(interval)
 {
-    struct sockaddr_in my_addr;
     mystruct* udp = new mystruct;
     mystruct* tcp = new mystruct;
     mystruct* show = new mystruct;
 
     int udpSock;
     int tcpSock;
-    int err;
 
     pthread_t thread_id=0;
     string address;
     string port;
-    std::size_t pos;
+    
+    //std::size_t pos;
+    //struct sockaddr_in my_addr;
+    //int err;
 
     address = src;
     machine_no = machineno;
@@ -164,11 +165,12 @@ void* ConnectionHandler::showCommandPrompt(void* lp)
 void* ConnectionHandler::TCPSocketHandler(void* lp)
 {
     mystruct *ptr = static_cast<mystruct*>(lp);
-    ConnectionHandler *ptr1 = (ConnectionHandler*)ptr->owner;
     socklen_t addr_size = 0;
     int* csock;
     sockaddr_in sadr;
     pthread_t thread_id=0;
+
+    //ConnectionHandler *ptr1 = (ConnectionHandler*)ptr->owner;
 
     while(true)
     {
@@ -287,17 +289,22 @@ void* ConnectionHandler::updateKeyValue(void* lp)
 void* ConnectionHandler::UDPSocketHandler(void* lp)
 {
     mystruct *ptr = static_cast<mystruct*>(lp);
-    ConnectionHandler *ptr1 = (ConnectionHandler*)ptr->owner;
 
     struct sockaddr_in cli_addr;
-    int sockfd, i; 
     socklen_t slen=sizeof(cli_addr);
-    //string recvstr;
+    
     int byte_count;
     char buf[1024];
+    int errCode = 0;
+    
     pthread_t thread_id=0;
+    
     /* Initialize the mutex */
     pthread_mutex_init(&mutexsum, NULL);
+
+    //ConnectionHandler *ptr1 = (ConnectionHandler*)ptr->owner;
+    //int sockfd, i; 
+    //string recvstr;
     
     while(1)
     {
@@ -321,7 +328,7 @@ void* ConnectionHandler::UDPSocketHandler(void* lp)
             boost::archive::text_iarchive ia(ss1);
             MembershipList recvList;
             ia >> recvList;
-            int errorcode = 0;
+            errCode = 0;
             ss1.clear();
     
             MembershipList *list = new MembershipList();
@@ -339,7 +346,7 @@ void* ConnectionHandler::UDPSocketHandler(void* lp)
         catch(exception& e)
         {
             string msg = "Failed to de-serialize";
-            int errCode = 0;
+            errCode = 0;
             logger->logError(SERIALIZATION_ERROR, msg , &errCode);
         }
     }
@@ -392,13 +399,16 @@ void ConnectionHandler::sendMemberList(vector<string> memberIPs)
 {
     struct sockaddr_in serv_addr;
     int sockfd, i, slen=sizeof(serv_addr);
-    char buf[BUFLEN];
     int errorcode = 0;
     std::stringstream ss;
-#ifdef TESTING
+    
+    //char buf[BUFLEN];
+
+    #ifdef TESTING
     int calPct = rand() % 100;
     if(sendPct > 0 && (calPct < sendPct))
-#endif
+    #endif
+    
     {
         /* Increment heartbeat */
     	this->getMemPtr()->incrementHeartbeat(1,&errorcode);
@@ -406,24 +416,29 @@ void ConnectionHandler::sendMemberList(vector<string> memberIPs)
     	if(!leave) {
             this->getMemPtr()->processList(&errorcode);
     	}
-        /* Check if a new member joined and if I have to move my keys to him */
+        /* Check if there are any new messages in the coordinator */
         Coordinator *coord = this->getCoordinatorPtr();
-        if(coord->hasMessage())
+        while(coord->hasMessage())
         {
+            Message message = coord->popMessage();
             vector<string> commands;
-            if(coord->getReason() == JOIN)
+            if(message.getReason() == REASON_JOIN)
             {
                 /* Find the IP of the node to move the keys to */
-                commands = this->getKeyValuePtr()->getCommandsForJoin(&errorcode);
-                string ip = this->getMemPtr()->getIPFromHash(coord->getNewMemberHash());
+                commands = this->getKeyValuePtr()->getCommandsForJoin(message, &errorcode);
+                string ip = this->getMemPtr()->getIPFromHash(message.getNewMemberHash());
                 cout << "Moving my keys to the new node in the system with IP " 
                      << ip 
-                     << " and hash " << coord->getNewMemberHash() 
+                     << " and hash " << message.getNewMemberHash() 
                      << endl;
                 for(i = 0; i < commands.size() ; i++) {
                     Utility::tcpConnectSocket(ip,SERVER_PORT,commands[i]);
                 }
-                coord->setTransferKeysToMember(0);
+            } else if (message.getReason() == REASON_FAILURE){
+                //failure and replication handling calls to key value store go here
+            } else {
+                string msg = "Did not recognize the message reason: '" + message.getReason() + "'";
+                logger->logError(UNRECOGNIZED_MESSAGE_REASON, msg, &errorcode);
             }
         }
         /* If time exceeds the time to cleanup exit the process */

@@ -57,179 +57,170 @@ class Utility {
 		return i % 2;
 	}
 
-        static int udpSocket(string address, int port) {
+    static int udpSocket(string address, int port) {
 
-            int hsock;
-            int * p_int ;
-    	    //int err;
-            struct sockaddr_in my_addr;
-    	    //socklen_t addr_size = 0;
-    	    //sockaddr_in sadr;
-
-            hsock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-            if(hsock == -1){
-                string msg = "Failed to open socket";
-                int errCode = 0;
-                //logger->logError(SOCKET_ERROR, msg , &errCode);
-                return -1;
-            } 
-
-            p_int = (int*)malloc(sizeof(int));
-            *p_int = 1;
-
-            /* Setting socket options */
-            if( (setsockopt(hsock, SOL_SOCKET, SO_REUSEADDR, (char*)p_int, sizeof(int)) == -1 )||
-                (setsockopt(hsock, SOL_SOCKET, SO_KEEPALIVE, (char*)p_int, sizeof(int)) == -1 ) ){
-                string msg = "Failed to set socket options";
-                int errCode = 0;
-                //logger->logError(SOCKET_ERROR, msg , &errCode);
-                free(p_int);
-                return -1;
-            }
-            free(p_int);
-
-            my_addr.sin_family = AF_INET;
-            my_addr.sin_port = htons(port);
-
-            memset(&(my_addr.sin_zero), 0, 8);
-            my_addr.sin_addr.s_addr = inet_addr(address.c_str());;
-
-            if( bind( hsock, (sockaddr*)&my_addr, sizeof(my_addr)) == -1 ){
-                string msg = "Failed to bind to socket";
-                int errCode = 0;
-                //logger->logError(SOCKET_ERROR, msg , &errCode);
-                return -1;
-            }
-            return hsock;
-        }
-
-        static int tcpSocket(string address, int port) {
-
-	    int hsock;
-	    int * p_int ;
-	    //int err;
-            struct sockaddr_in my_addr;
+        int hsock;
+        int * p_int ;
+        struct sockaddr_in my_addr;
+	    //int errCode = 0;
 	    //socklen_t addr_size = 0;
-	    //int* csock;
-	   // sockaddr_in sadr;
+	    //sockaddr_in sadr;
 
-            hsock = socket(AF_INET, SOCK_STREAM, 0);
-            if(hsock == -1){
-                string msg = "Failed to open socket";
-                cout << msg << endl;
-                int errCode = 0;
-                //logger->logError(SOCKET_ERROR, msg , &errCode);
-                return -1;
-            }
+        hsock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+        if(hsock == -1){
+            string msg = "Failed to open socket";
+            cout<<msg<<endl;
+            //logger->logError(SOCKET_ERROR, msg , &errCode);
+            return -1;
+        } 
 
-            p_int = (int*)malloc(sizeof(int));
-            *p_int = 1;
+        p_int = (int*)malloc(sizeof(int));
+        *p_int = 1;
 
-            /* Setting socket options */
-            if( (setsockopt(hsock, SOL_SOCKET, SO_REUSEADDR, (char*)p_int, sizeof(int)) == -1 )||
-                (setsockopt(hsock, SOL_SOCKET, SO_KEEPALIVE, (char*)p_int, sizeof(int)) == -1 ) ){
-                string msg = "Failed to set socket options";
-                cout << msg << endl;
-                int errCode = 0;
-                //logger->logError(SOCKET_ERROR, msg , &errCode);
-                free(p_int);
-                return -1;
-            }
+        /* Setting socket options */
+        if( (setsockopt(hsock, SOL_SOCKET, SO_REUSEADDR, (char*)p_int, sizeof(int)) == -1 )||
+            (setsockopt(hsock, SOL_SOCKET, SO_KEEPALIVE, (char*)p_int, sizeof(int)) == -1 ) ){
+            string msg = "Failed to set socket options";
+            cout<<msg<<endl;
+            //logger->logError(SOCKET_ERROR, msg , &errCode);
             free(p_int);
+            return -1;
+        }
+        free(p_int);
 
-            my_addr.sin_family = AF_INET ;
-            my_addr.sin_port = htons(port);
+        my_addr.sin_family = AF_INET;
+        my_addr.sin_port = htons(port);
 
-            memset(&(my_addr.sin_zero), 0, 8);
-            my_addr.sin_addr.s_addr = inet_addr(address.c_str());;
+        memset(&(my_addr.sin_zero), 0, 8);
+        my_addr.sin_addr.s_addr = inet_addr(address.c_str());;
 
-            if( bind(hsock, (sockaddr*)&my_addr, sizeof(my_addr)) == -1 ){
-                string msg = "Failed to bind to socket";
-                cout << msg << endl;
-                int errCode = 0;
-                //logger->logError(SOCKET_ERROR, msg , &errCode);
-                return -1;
-            }
-            if(listen(hsock, 10) == -1 ){
-                string msg = "Failed to listen on socket";
-                cout << msg << endl;
-                int errCode = 0;
-                //logger->logError(SOCKET_ERROR, msg , &errCode);
-                return -1;
-            }
-            return hsock;
+        if( bind( hsock, (sockaddr*)&my_addr, sizeof(my_addr)) == -1 ){
+            string msg = "Failed to bind to socket";
+            cout<<msg<<endl;
+            //logger->logError(SOCKET_ERROR, msg , &errCode);
+            return -1;
+        }
+        return hsock;
+    }
+
+    static int tcpSocket(string address, int port) {
+
+        int hsock;
+        int * p_int ;
+        struct sockaddr_in my_addr;
+        //int errCode = 0; 
+        //socklen_t addr_size = 0;
+        //int* csock;
+        // sockaddr_in sadr;
+
+        hsock = socket(AF_INET, SOCK_STREAM, 0);
+        if(hsock == -1){
+            string msg = "Failed to open socket";
+            cout << msg << endl;
+            //logger->logError(SOCKET_ERROR, msg , &errCode);
+            return -1;
         }
 
-        static string tcpConnectSocket(string address, int port, string msg) {
+        p_int = (int*)malloc(sizeof(int));
+        *p_int = 1;
 
-            int hsock;
-            int * p_int ;
-            //int err;
-            struct sockaddr_in my_addr;
-            //socklen_t addr_size = 0;
-            //int* csock;
-            //sockaddr_in sadr;
-            char buffer[12288];
-            int buffer_len = 12288;
-            int bytecount;
-
-            hsock = socket(AF_INET, SOCK_STREAM, 0);
-            if(hsock == -1){
-                string msg = "Failed to open socket";
-                cout << msg << endl;
-                int errCode = 0;
-                //logger->logError(SOCKET_ERROR, msg , &errCode);
-            }
-
-            p_int = (int*)malloc(sizeof(int));
-            *p_int = 1;
-
-            /* Setting socket options */
-            if( (setsockopt(hsock, SOL_SOCKET, SO_REUSEADDR, (char*)p_int, sizeof(int)) == -1 )||
-                (setsockopt(hsock, SOL_SOCKET, SO_KEEPALIVE, (char*)p_int, sizeof(int)) == -1 ) ){
-                string msg = "Failed to set socket options";
-                cout << msg << endl;
-                int errCode = 0;
-                //logger->logError(SOCKET_ERROR, msg , &errCode);
-                free(p_int);
-            }
+        /* Setting socket options */
+        if( (setsockopt(hsock, SOL_SOCKET, SO_REUSEADDR, (char*)p_int, sizeof(int)) == -1 )||
+            (setsockopt(hsock, SOL_SOCKET, SO_KEEPALIVE, (char*)p_int, sizeof(int)) == -1 ) ){
+            string msg = "Failed to set socket options";
+            cout << msg << endl;
+            //logger->logError(SOCKET_ERROR, msg , &errCode);
             free(p_int);
-
-            my_addr.sin_family = AF_INET ;
-            my_addr.sin_port = htons(port);
-
-            memset(&(my_addr.sin_zero), 0, 8);
-            my_addr.sin_addr.s_addr = inet_addr(address.c_str());;
-
-	    if( connect( hsock, (struct sockaddr*)&my_addr, sizeof(my_addr)) == -1 ){
-                    string msg = "Failed to Connect";
-                    cout << msg << endl;
-                    int errCode = 0;
-                    //logger->logError(SOCKET_ERROR, msg , &errCode);
-            }
-
-            if(send(hsock, msg.c_str(), strlen(msg.c_str()), 0) < 0)
-            {
-                    string msg = "Failed to send msg via socket";
-                    cout << msg << endl;
-                    int errCode = 0;
-                    //logger->logError(SOCKET_ERROR, msg , &errCode);
-            }
-
-            memset(buffer, 0, buffer_len);
-            if((bytecount = recv(hsock, buffer, buffer_len, 0))== -1)
-            {
-                    string msg = "Failed to receive reply via socket";
-                    cout << msg << endl;
-                    int errCode = 0;
-                    //logger->logError(SOCKET_ERROR, msg , &errCode);
-            }
-
-            close(hsock);
-            hsock = -1;
-            string result = buffer;
-            return result;
+            return -1;
         }
+        free(p_int);
+
+        my_addr.sin_family = AF_INET ;
+        my_addr.sin_port = htons(port);
+
+        memset(&(my_addr.sin_zero), 0, 8);
+        my_addr.sin_addr.s_addr = inet_addr(address.c_str());;
+
+        if( bind(hsock, (sockaddr*)&my_addr, sizeof(my_addr)) == -1 ){
+            string msg = "Failed to bind to socket";
+            cout << msg << endl;
+            //logger->logError(SOCKET_ERROR, msg , &errCode);
+            return -1;
+        }
+        if(listen(hsock, 10) == -1 ){
+            string msg = "Failed to listen on socket";
+            cout << msg << endl;
+            //logger->logError(SOCKET_ERROR, msg , &errCode);
+            return -1;
+        }
+        return hsock;
+    }
+
+    static string tcpConnectSocket(string address, int port, string msg) {
+
+        int hsock;
+        int * p_int ;
+        struct sockaddr_in my_addr;
+        char buffer[12288];
+        int buffer_len = 12288;
+        int bytecount;
+        //int errCode = 0;
+        //socklen_t addr_size = 0;
+        //int* csock;
+        //sockaddr_in sadr;
+
+        hsock = socket(AF_INET, SOCK_STREAM, 0);
+        if(hsock == -1){
+            string msg = "Failed to open socket";
+            cout << msg << endl;
+            //logger->logError(SOCKET_ERROR, msg , &errCode);
+        }
+
+        p_int = (int*)malloc(sizeof(int));
+        *p_int = 1;
+
+        /* Setting socket options */
+        if( (setsockopt(hsock, SOL_SOCKET, SO_REUSEADDR, (char*)p_int, sizeof(int)) == -1 )||
+            (setsockopt(hsock, SOL_SOCKET, SO_KEEPALIVE, (char*)p_int, sizeof(int)) == -1 ) ){
+            string msg = "Failed to set socket options";
+            cout << msg << endl;
+            //logger->logError(SOCKET_ERROR, msg , &errCode);
+            free(p_int);
+        }
+        free(p_int);
+
+        my_addr.sin_family = AF_INET ;
+        my_addr.sin_port = htons(port);
+
+        memset(&(my_addr.sin_zero), 0, 8);
+        my_addr.sin_addr.s_addr = inet_addr(address.c_str());;
+
+    if( connect( hsock, (struct sockaddr*)&my_addr, sizeof(my_addr)) == -1 ){
+            string msg = "Failed to Connect";
+            cout << msg << endl;
+            //logger->logError(SOCKET_ERROR, msg , &errCode);
+        }
+
+        if(send(hsock, msg.c_str(), strlen(msg.c_str()), 0) < 0)
+        {
+            string msg = "Failed to send msg via socket";
+            cout << msg << endl;
+            //logger->logError(SOCKET_ERROR, msg , &errCode);
+        }
+
+        memset(buffer, 0, buffer_len);
+        if((bytecount = recv(hsock, buffer, buffer_len, 0))== -1)
+        {
+            string msg = "Failed to receive reply via socket";
+            cout << msg << endl;
+            //logger->logError(SOCKET_ERROR, msg , &errCode);
+        }
+
+        close(hsock);
+        hsock = -1;
+        string result = buffer;
+        return result;
+    }
 
 };
 

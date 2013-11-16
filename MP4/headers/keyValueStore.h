@@ -335,10 +335,10 @@ class KeyValueStore {
 	 * @param  errCode 	 [space to store error code]
 	 * @return           [the built commands]
 	 */
-	vector<string> getCommandsForJoin(int *errCode) {
+	vector<string> getCommandsForJoin(Message message, int *errCode) {
 		vector<int> keys;
-		int newNodeHash = coordinator->getNewMemberHash();
-		int myNodeHash = coordinator->getSelfHash();
+		int newNodeHash = message.getNewMemberHash();
+		int myNodeHash = message.getSelfHash();
 		//comparison to see which keys need to go to the new joinee
 		//goes through all of its keys to see if there are any that are lesser than the hash of the new machine (on the ring)
 		for(boost::unordered_map<int, Value>::iterator it = keyValueStore.begin(); it != keyValueStore.end(); it++) {
