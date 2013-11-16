@@ -89,6 +89,7 @@ class MembershipList {
     KeyValueStore *kvStore;
     Coordinator *coordinator;
     int myHash;
+    pthread_mutex_t mutexsum;
 	
 	//machine id. never changes between successive reincarnations of the machine
 	int machineID;
@@ -130,7 +131,7 @@ class MembershipList {
 		for(int i =0 ; i < memList.size(); i++ ) {
 			if(entry.id == memList[i].id) {
 				removeFromList(i);
-                                keyToIPMap.erase(entry.nodeID);
+                keyToIPMap.erase(entry.nodeID);
 				break;
 			}
 		}
@@ -512,17 +513,22 @@ class MembershipList {
 		logger = logObject;
 		networkID = netID;
 		coordinator = coord;
+		
+		/* Initialize the mutex */
+    	pthread_mutex_init(&mutexsum, NULL);
 
 		MembershipDetails entry;
 		entry.id = networkID;
 		entry.localTimestamp = time(0);
         entry.nodeID = Hash::calculateNodeHash(networkID);
 		myHash = entry.nodeID;
-        cout << "My node has value " << myHash << endl;
+        
 		addToList(entry);
 
 		updateTimeToCleanup();
 		updateTimeToFailure();
+
+		cout << "My node has value " << myHash << endl;
 	}
     
     /**
@@ -566,9 +572,11 @@ class MembershipList {
 		}
 		int status = SUCCESS;
 
+		pthread_mutex_lock (&mutexsum);
 		//merge the lists
 		status = mergeList(recvList, errCode);
-		
+		pthread_mutex_unlock (&mutexsum);
+
 		return status;
 	}
 
@@ -588,6 +596,7 @@ class MembershipList {
 		int status = SUCCESS;
 		int i =0;
 
+		pthread_mutex_lock (&mutexsum);
 		//this vector holds all entries marked for deletion
 		vector<MembershipDetails> entriesToDelete;
 
@@ -614,6 +623,7 @@ class MembershipList {
 				status = FAILURE;
 			}
 		}
+		pthread_mutex_unlock (&mutexsum);
 
 		return status;
 	}
@@ -633,6 +643,7 @@ class MembershipList {
 		}
 		int status = SUCCESS;
 
+		pthread_mutex_lock (&mutexsum);
 		int i = 0;
 		int found = 0;
 		//find yourself and increase your heartbeat
@@ -657,7 +668,7 @@ class MembershipList {
 				break;
 			}
 		}
-
+		pthread_mutex_unlock (&mutexsum);
 		//we didn't find ourselves!! identity crisis!! NOOOOOOOOOOOOOO!!!!!
 		if(status != FAILURE && found == 0) {
 			*errCode = SELF_ENTRY_NOT_FOUND;
@@ -667,22 +678,22 @@ class MembershipList {
 
 	}
 
-    string getIPToSendToFromKeyHash(int key) {
-            map<int,string>::iterator it;
-            /* Find the IP of the machine with hash higher than the key to be stored */
-            for (it=keyToIPMap.begin(); it!=keyToIPMap.end(); ++it){
-                    if(it->first > key){
-                            return it->second;
-                    }
+    string getIPToSendToFromKeyHash(int keyHash) {
+        map<int,string>::iterator it;
+        /* Find the IP of the machine with hash higher than the key to be stored */
+        for (it=keyToIPMap.begin(); it!=keyToIPMap.end(); ++it){
+            if(it->first > keyHash){
+                 return it->second;
             }
-            /* if no such node found, the correct node must be the first node */
-            it = keyToIPMap.begin();
-            return it->second;
+        }
+        /* if no such node found, the correct node must be the first node */
+        it = keyToIPMap.begin();
+        return it->second;
     }
 
     /* Return the IP from a node hash */
     string getIPFromHash(int key) {
-            return keyToIPMap.find(key)->second;
+        return keyToIPMap.find(key)->second;
     }
 
     string getIPofSuccessor() {
@@ -720,6 +731,7 @@ class MembershipList {
 		}
 		int status = SUCCESS;
 
+		pthread_mutex_lock (&mutexsum);
 		int i = 0;
 		int found = 0;
 		//find yourself and put in a request for retirement. 
@@ -744,7 +756,7 @@ class MembershipList {
 				break;
 			}
 		}
-
+		pthread_mutex_unlock (&mutexsum);
 		//we didn't find ourselves!! identity crisis!! NOOOOOOOOOOOOOO!!!!!
 		if(status != FAILURE && found == 0) {
 			*errCode = SELF_ENTRY_NOT_FOUND;

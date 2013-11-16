@@ -42,7 +42,7 @@ using namespace std;
 using namespace P2P;
 
 //std::stringstream ss; 
-pthread_mutex_t mutexsum;
+//pthread_mutex_t mutexsum;
 bool leave;
 long int leaveTimeStamp;
 static long int sends = 1;
@@ -299,8 +299,8 @@ void* ConnectionHandler::UDPSocketHandler(void* lp)
     
     pthread_t thread_id=0;
     
-    /* Initialize the mutex */
-    pthread_mutex_init(&mutexsum, NULL);
+    /* Initialize the mutex 
+    pthread_mutex_init(&mutexsum, NULL);*/
 
     //ConnectionHandler *ptr1 = (ConnectionHandler*)ptr->owner;
     //int sockfd, i; 
@@ -362,11 +362,11 @@ void* ConnectionHandler::updateMembershipList(void* lp)
     int errorcode = 0;
 
     /* Take a lock on the membership list */
-    pthread_mutex_lock (&mutexsum);
+    //pthread_mutex_lock (&mutexsum);
     //ptr->mPtr->printMemList();
     ptr1->getMemPtr()->updateMembershipList(ptr->mPtr,&errorcode);
     /* Release the lock after updating the membership list */
-    pthread_mutex_unlock (&mutexsum);
+    //pthread_mutex_unlock (&mutexsum);
 
     delete ptr->mPtr;
     delete ptr;
