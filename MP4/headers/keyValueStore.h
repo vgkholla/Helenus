@@ -61,6 +61,8 @@ class KeyValueStore {
 	ErrorLog *logger;
 	//the coordinator
 	Coordinator *coordinator;
+	//lock for operations
+	pthread_mutex_t mutexsum;
 
 	/**
 	 * [checks for any preexisting errors before executing APIs]
@@ -112,6 +114,51 @@ class KeyValueStore {
 
 	}
 
+	/**
+	 * [builds a command to perform a certain operation]
+	 * @param  operation [the operation to be performed]
+	 * @param  key       [the key]
+	 * @param  value     [the value]
+	 * @return           [the built command]
+	 */
+	string buildCommand(string operation, int key, string value) {
+		//builds a well formed command of the form operation(key,value)
+		string command = operation + "(" + Utility::intToString(key);
+		if(operation == UPDATE_KEY || operation == INSERT_KEY) {
+			command += ",";
+			command += value;
+		}
+		command += ")";
+
+		return command;
+	}
+
+	/**
+	 *	[builds commands to perform an operation on a set of keys]
+	 * @param  operation [the operation to be performed]
+	 * @param  keys      [the set of keys]
+	 * @return           [the built commands]
+	 */
+	vector<string> getCommands(string operation, vector<int> keys, int *errCode) {
+		vector<string> commands;
+		string command = "";
+		string value = "";
+		int key;
+
+		//iterate over the keys and form well formed commands for each of them
+		for(int i = 0; i < keys.size(); i++){
+			key = keys[i];
+			//lookup the value
+			value = lookupKey(key, errCode);
+			//build command
+			command = buildCommand(operation, key, value);
+			//add to list
+			commands.push_back(command);
+		}
+
+		return commands;
+	} 
+
 	public:
 	/**
 	 * Constructor. Supply ID of machine which will own the key value store and the logger object of the machine
@@ -120,6 +167,9 @@ class KeyValueStore {
 		machineID = ID;
 		logger = logObject;
 		coordinator = coord;
+
+		/* Initialize the mutex */
+		pthread_mutex_init(&mutexsum, NULL);
 	}
 
 	/**
@@ -135,6 +185,9 @@ class KeyValueStore {
 		if (status == FAILURE) {
 			return status;
 		}
+
+		pthread_mutex_lock (&mutexsum);
+
 		//make the value object
 		Value value = Value(valueString);
 
@@ -151,6 +204,7 @@ class KeyValueStore {
 			status = FAILURE;
 		}
 
+		pthread_mutex_unlock (&mutexsum);
 		//error check
 		if(status == FAILURE){
 			string msg = "Inserting key failed. Key is " + Utility::intToString(key);
@@ -173,6 +227,7 @@ class KeyValueStore {
 			return status;
 		}
 
+		pthread_mutex_lock (&mutexsum);
 		//delete the key
 		int elementsErased = keyValueStore.erase(key);
 
@@ -183,6 +238,7 @@ class KeyValueStore {
 			string msg = "Found more than one matching key and deleted them all! Key is " + Utility::intToString(key);
 			logger->logError(TOO_MANY_KEYS, msg, errCode);
 		}
+		pthread_mutex_unlock (&mutexsum);
 
 		return status;
 	}
@@ -201,6 +257,8 @@ class KeyValueStore {
 			return status;
 		}
 
+		pthread_mutex_lock (&mutexsum);
+
 		//make the value object
 		Value value = Value(valueString);
 
@@ -214,6 +272,8 @@ class KeyValueStore {
 			*errCode = UPDATE_FAILED;
 			status = FAILURE;
 		}
+
+		pthread_mutex_unlock (&mutexsum);
 
 		return status;
 	}
@@ -284,51 +344,6 @@ class KeyValueStore {
 			cout<<entries<<endl;
 		}
 	}
-
-	/**
-	 * [builds a command to perform a certain operation]
-	 * @param  operation [the operation to be performed]
-	 * @param  key       [the key]
-	 * @param  value     [the value]
-	 * @return           [the built command]
-	 */
-	string buildCommand(string operation, int key, string value) {
-		//builds a well formed command of the form operation(key,value)
-		string command = operation + "(" + Utility::intToString(key);
-		if(operation == UPDATE_KEY || operation == INSERT_KEY) {
-			command += ",";
-			command += value;
-		}
-		command += ")";
-
-		return command;
-	}
-
-	/**
-	 *	[builds commands to perform an operation on a set of keys]
-	 * @param  operation [the operation to be performed]
-	 * @param  keys      [the set of keys]
-	 * @return           [the built commands]
-	 */
-	vector<string> getCommands(string operation, vector<int> keys, int *errCode) {
-		vector<string> commands;
-		string command = "";
-		string value = "";
-		int key;
-
-		//iterate over the keys and form well formed commands for each of them
-		for(int i = 0; i < keys.size(); i++){
-			key = keys[i];
-			//lookup the value
-			value = lookupKey(key, errCode);
-			//build command
-			command = buildCommand(operation, key, value);
-			//add to list
-			commands.push_back(command);
-		}
-
-		return commands;
-	} 
 
 	/**
 	 *	[builds commands for keys to be sent when a machine joins]

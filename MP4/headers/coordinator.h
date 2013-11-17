@@ -15,14 +15,13 @@ class Message {
 	//a class for passing messages between the membership list and the key value store
 
 	string reason; //the reason for transfer. can be join or failure
+	int selfHash; //Node's hash
 
 	//for join
 	int newMemberHash;//if reason is join, the hash of new member
 	
 	//for failure
 	int failedMemberHash;//if reason is failure, the hash of the machine that failed
-
-	int selfHash; //Node's hash
 
 	public:
 	Message() {
@@ -72,10 +71,15 @@ class Message {
 
 class Coordinator {
 
+	//the list of messages
 	vector <Message> messages;
+	//lock for operations
+	pthread_mutex_t mutexsum;
 
 	public:
 	Coordinator() {
+		/* Initialize the mutex */
+		pthread_mutex_init(&mutexsum, NULL);
 	}
 
 	/**
@@ -87,12 +91,16 @@ class Coordinator {
 	}
 
 	void pushMessage(Message message) {
+		pthread_mutex_lock (&mutexsum);
 		messages.push_back(message);
+		pthread_mutex_unlock (&mutexsum);
 	}
 
 	Message popMessage() {
+		pthread_mutex_lock (&mutexsum);
 		Message message = messages.back();
 		messages.pop_back();
+		pthread_mutex_unlock (&mutexsum);
 		return message;
 	}
 };

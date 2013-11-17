@@ -83,13 +83,18 @@ class MembershipDetails {
 class MembershipList {
 
 	private:
+	//the logger
 	ErrorLog *logger;
+	//the memberhip list
 	vector<MembershipDetails> memList;
-    map<int,string> keyToIPMap;
-    KeyValueStore *kvStore;
-    Coordinator *coordinator;
-    int myHash;
-    pthread_mutex_t mutexsum;
+	//the key to IP map
+	map<int,string> keyToIPMap;
+	//the coordinator
+	Coordinator *coordinator;
+	//hash of the machine that owns this membership list
+	int myHash;
+	//lock for operations
+	pthread_mutex_t mutexsum;
 	
 	//machine id. never changes between successive reincarnations of the machine
 	int machineID;
@@ -515,12 +520,13 @@ class MembershipList {
 		coordinator = coord;
 		
 		/* Initialize the mutex */
-    	pthread_mutex_init(&mutexsum, NULL);
+		pthread_mutex_init(&mutexsum, NULL);
 
 		MembershipDetails entry;
 		entry.id = networkID;
 		entry.localTimestamp = time(0);
-        entry.nodeID = Hash::calculateNodeHash(networkID);
+		entry.nodeID = Hash::calculateNodeHash(networkID);
+		
 		myHash = entry.nodeID;
         
 		addToList(entry);
