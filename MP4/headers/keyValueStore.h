@@ -24,6 +24,8 @@ using namespace std;
 class Value {
 	//the actual value
 	string value;
+	//the ownership status of the key, owned or replicated
+	int owned; //1 means owner, 0 means replicated, -1 means undetermined (init value, should never be the value for a real key)
 
 	public:
 	/**
@@ -31,6 +33,7 @@ class Value {
 	 */
 	Value (string valueString) {
 		setValue(valueString);
+		owned = -1;
 	}
 
 	/**
@@ -42,11 +45,34 @@ class Value {
 	}
 
 	/**
+	 * [sets current machine as owner]
+	 */
+	void setAsOwner(){
+		owned = 1;
+	}
+
+	/**
+	 * [sets current machine as replica]
+	 */
+	void setAsReplica(){
+		owned = 0;
+	}
+
+	/**
 	 * [gets the string at this value object]
 	 * @return [description]
 	 */
 	string getValue() {
 		return value;
+	}
+
+
+	int isOwner() {
+		return owned == 1;
+	}
+
+	int isReplica() {
+		return owned == 0;
 	}
 };
 
@@ -80,6 +106,28 @@ class KeyValueStore {
 		}
 
 		return SUCCESS;
+	}
+
+	vector<int> getOwnedKeys(int *errCode) {
+		vector<int> keys;
+		for(boost::unordered_map<int, Value>::iterator it = keyValueStore.begin(); it != keyValueStore.end(); it++) {
+			if(it->second.isOwner()) {
+				keys.push_back(it->first);
+			}
+		}
+
+		return keys;
+	}
+
+	vector<int> getReplicatedKeys(int *errCode) {
+		vector<int> keys;
+		for(boost::unordered_map<int, Value>::iterator it = keyValueStore.begin(); it != keyValueStore.end(); it++) {
+			if(it->second.isReplica()) {
+				keys.push_back(it->first);
+			}
+		}
+
+		return keys;
 	}
 
 	/**
