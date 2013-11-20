@@ -202,7 +202,7 @@ void* ConnectionHandler::updateKeyValue(void* lp)
     int buffer_len = 12288;
     string msg;
     int bytecount;
-    long int keyToInsert;
+    string keyToInsert;
     int hash;
 
     memset(buffer, 0, buffer_len);

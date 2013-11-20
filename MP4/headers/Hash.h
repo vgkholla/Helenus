@@ -16,6 +16,21 @@ using namespace std;
 
 class Hash
 {
+
+    static int calculateStringHash(string toBeHashed) {
+        int hashID;
+        unsigned char digest[SHA_DIGEST_LENGTH];
+        unsigned char convertedToBeHashed[toBeHashed.length() + 1];
+        int i;
+        for(i = 0; i < toBeHashed.length(); i++) {
+            convertedToBeHashed[i] = toBeHashed[i];
+        }
+        convertedToBeHashed[i] = '\0';
+        SHA1(convertedToBeHashed, sizeof(convertedToBeHashed), (unsigned char*)&digest);
+        hashID = digest[0];
+        return hashID;
+    }
+
 public:
     Hash(int truncate)
     {
@@ -24,20 +39,23 @@ public:
 
     static int calculateNodeHash(string networkID)
     {
-        int hashID;
-        unsigned char digest[SHA_DIGEST_LENGTH];
-        SHA1((unsigned char*)&networkID, strlen(networkID.c_str()), (unsigned char*)&digest);
-        hashID = digest[0];
-        return hashID;
+        return calculateStringHash(networkID);
+    };
+
+    static int calculateKeyHash(string key)
+    {
+       return calculateStringHash(key);
     };
 
     static int calculateKeyHash(long int key)
     {
-        int hashID;
+        /*int hashID;
         unsigned char digest[SHA_DIGEST_LENGTH];
         SHA1((unsigned char*)&key, sizeof(key), (unsigned char*)&digest);
         hashID = digest[0];
-        return hashID;
+        return hashID;*/
+        cout<<"ERROR!!!!!!!!!!!!!! No one should be coming here!!!!"<<endl;
+        return 0;
     };
 
 private:

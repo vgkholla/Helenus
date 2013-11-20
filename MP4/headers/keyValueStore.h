@@ -80,7 +80,7 @@ class Value {
 class KeyValueStore {
 
 	//the hash map to store our keys
-	boost::unordered_map<int,Value> keyValueStore;
+	boost::unordered_map<string,Value> keyValueStore;
 	//the machine ID that is the owner of this key value store
 	int machineID;
 	//the logger object
@@ -108,9 +108,9 @@ class KeyValueStore {
 		return SUCCESS;
 	}
 
-	vector<int> getOwnedKeys(int *errCode) {
-		vector<int> keys;
-		for(boost::unordered_map<int, Value>::iterator it = keyValueStore.begin(); it != keyValueStore.end(); it++) {
+	vector<string> getOwnedKeys(int *errCode) {
+		vector<string> keys;
+		for(boost::unordered_map<string, Value>::iterator it = keyValueStore.begin(); it != keyValueStore.end(); it++) {
 			if(it->second.isOwner()) {
 				keys.push_back(it->first);
 			}
@@ -119,9 +119,9 @@ class KeyValueStore {
 		return keys;
 	}
 
-	vector<int> getReplicatedKeys(int *errCode) {
-		vector<int> keys;
-		for(boost::unordered_map<int, Value>::iterator it = keyValueStore.begin(); it != keyValueStore.end(); it++) {
+	vector<string> getReplicatedKeys(int *errCode) {
+		vector<string> keys;
+		for(boost::unordered_map<string, Value>::iterator it = keyValueStore.begin(); it != keyValueStore.end(); it++) {
 			if(it->second.isReplica()) {
 				keys.push_back(it->first);
 			}
@@ -137,8 +137,8 @@ class KeyValueStore {
 	 * @param  suppressError [if true, doesn't log an errors]
 	 * @return               [the iterator in the hash map which points to the key]
 	 */
-	boost::unordered_map<int, Value>::iterator lookupKey(int key, int *errCode, int suppressError) {
-		boost::unordered_map<int, Value>::iterator entry = keyValueStore.end();
+	boost::unordered_map<string, Value>::iterator lookupKey(string key, int *errCode, int suppressError) {
+		boost::unordered_map<string, Value>::iterator entry = keyValueStore.end();
 
 		//check for preexisting error
 		int status = checkForPreExistingError(errCode, __func__);
@@ -153,7 +153,7 @@ class KeyValueStore {
 		if(entry == keyValueStore.end()) {
 			//no such key
 			if(!suppressError) {
-				string msg = "Tried to lookup a key which does not exist. Key is " + Utility::intToString(key);
+				string msg = "Tried to lookup a key which does not exist. Key is " + key;
 				logger->logError(NO_SUCH_KEY, msg , errCode);
 			}
 		}
@@ -169,9 +169,9 @@ class KeyValueStore {
 	 * @param  value     [the value]
 	 * @return           [the built command]
 	 */
-	string buildCommand(string operation, int key, string value) {
+	string buildCommand(string operation, string key, string value) {
 		//builds a well formed command of the form operation(key,value)
-		string command = operation + "(" + Utility::intToString(key);
+		string command = operation + "(" + key;
 		if(operation == UPDATE_KEY || operation == INSERT_KEY) {
 			command += ",";
 			command += value;
@@ -187,11 +187,11 @@ class KeyValueStore {
 	 * @param  keys      [the set of keys]
 	 * @return           [the built commands]
 	 */
-	vector<string> getCommands(string operation, vector<int> keys, int *errCode) {
+	vector<string> getCommands(string operation, vector<string> keys, int *errCode) {
 		vector<string> commands;
 		string command = "";
 		string value = "";
-		int key;
+		string key;
 
 		//iterate over the keys and form well formed commands for each of them
 		for(int i = 0; i < keys.size(); i++){
@@ -227,7 +227,7 @@ class KeyValueStore {
 	 * @param  errCode     [place to store errors]
 	 * @return             [status of insert]
 	 */
-	int insertKeyValue(int key, string valueString, int *errCode) {
+	int insertKeyValue(string key, string valueString, int *errCode) {
 		//check for preexisting error
 		int status = checkForPreExistingError(errCode, __func__);
 		if (status == FAILURE) {
@@ -240,13 +240,13 @@ class KeyValueStore {
 		Value value = Value(valueString);
 
 		//try to look the key up first
-		boost::unordered_map<int, Value>::iterator lookupEntry = lookupKey(key, errCode, 1);
+		boost::unordered_map<string, Value>::iterator lookupEntry = lookupKey(key, errCode, 1);
 
 		if(lookupEntry == keyValueStore.end()) { //key does not exist
 			//insert
 			status = int(keyValueStore.insert(make_pair(key, value)).second);
 		} else { //key exists
-			string msg = "Tried to insert a key which already exists. Key is " + Utility::intToString(key);
+			string msg = "Tried to insert a key which already exists. Key is " + key;
 			logger->logError(KEY_EXISTS, msg , errCode);
 			*errCode = KEY_EXISTS;
 			status = FAILURE;
@@ -255,7 +255,7 @@ class KeyValueStore {
 		pthread_mutex_unlock (&mutexsum);
 		//error check
 		if(status == FAILURE){
-			string msg = "Inserting key failed. Key is " + Utility::intToString(key);
+			string msg = "Inserting key failed. Key is " + key;
 			logger->logError(INSERT_FAILED, msg , errCode);
 		}
 
@@ -268,7 +268,7 @@ class KeyValueStore {
 	 * @param  errCode [place to store error code]
 	 * @return         [the status of delete]
 	 */
-	int deleteKey(int key, int *errCode) {
+	int deleteKey(string key, int *errCode) {
 		//check for preexisting error
 		int status = checkForPreExistingError(errCode, __func__);
 		if (status == FAILURE) {
@@ -280,10 +280,10 @@ class KeyValueStore {
 		int elementsErased = keyValueStore.erase(key);
 
 		if (elementsErased == 0) {//none deleted?
-			string msg = "Tried to delete a key which does not exist. Key is " + Utility::intToString(key);
+			string msg = "Tried to delete a key which does not exist. Key is " + key;
 			logger->logError(NO_SUCH_KEY, msg , errCode);
 		} else if (elementsErased > 1) {//too many deleted? (should not happen!)
-			string msg = "Found more than one matching key and deleted them all! Key is " + Utility::intToString(key);
+			string msg = "Found more than one matching key and deleted them all! Key is " + key;
 			logger->logError(TOO_MANY_KEYS, msg, errCode);
 		}
 		pthread_mutex_unlock (&mutexsum);
@@ -298,7 +298,7 @@ class KeyValueStore {
 	 * @param  errCode     [place to store error code]
 	 * @return             [status of update]
 	 */
-	int updateKeyValue(int key, string valueString, int *errCode) {
+	int updateKeyValue(string key, string valueString, int *errCode) {
 		//check for preexisting error
 		int status = checkForPreExistingError(errCode, __func__);
 		if (status == FAILURE) {
@@ -310,12 +310,12 @@ class KeyValueStore {
 		//make the value object
 		Value value = Value(valueString);
 
-		boost::unordered_map<int, Value>::iterator lookupEntry = lookupKey(key, errCode, 1);
+		boost::unordered_map<string, Value>::iterator lookupEntry = lookupKey(key, errCode, 1);
 		
 		if(lookupEntry != keyValueStore.end()) { //key exists
 			lookupEntry->second = value;
 		} else { //key does not exist
-			string msg = "Updating key failed. Check if key exists. If not, use insert. Key is " + Utility::intToString(key);
+			string msg = "Updating key failed. Check if key exists. If not, use insert. Key is " + key;
 			logger->logError(UPDATE_FAILED, msg , errCode);
 			*errCode = UPDATE_FAILED;
 			status = FAILURE;
@@ -332,10 +332,10 @@ class KeyValueStore {
 	 * @param  errCode [place to store error code]
 	 * @return         [the value of key]
 	 */
-	string lookupKey(int key, int *errCode) {
+	string lookupKey(string key, int *errCode) {
 		string value = "";
 		//get the entry
-		boost::unordered_map<int, Value>::iterator lookupEntry = lookupKey(key, errCode, 0);
+		boost::unordered_map<string, Value>::iterator lookupEntry = lookupKey(key, errCode, 0);
 		//if lookup did not fail, extract the value
 		if(lookupEntry != keyValueStore.end()) {
 			 value = lookupEntry->second.getValue();
@@ -351,7 +351,6 @@ class KeyValueStore {
 	 */
 	string returnAllEntries(int *errCode) {
 		string value = "";
-
 		//check for preexisting error
 		int status = checkForPreExistingError(errCode, __func__);
 		if (status == FAILURE) {
@@ -360,8 +359,8 @@ class KeyValueStore {
 
 		//build all the entries in the store as key:value
 		int i = 0;
-		for(boost::unordered_map<int, Value>::iterator it = keyValueStore.begin(); it != keyValueStore.end(); it++) {
-			value += Utility::intToString(it->first);
+		for(boost::unordered_map<string, Value>::iterator it = keyValueStore.begin(); it != keyValueStore.end(); it++) {
+			value += it->first;
 			value += ":";
 			value += it->second.getValue();
 			value += "\n";
@@ -399,12 +398,12 @@ class KeyValueStore {
 	 * @return           [the built commands]
 	 */
 	vector<string> getCommandsForJoin(Message message, int *errCode) {
-		vector<int> keys;
+		vector<string> keys;
 		int newNodeHash = message.getNewMemberHash();
 		int myNodeHash = message.getSelfHash();
 		//comparison to see which keys need to go to the new joinee
 		//goes through all of its keys to see if there are any that are lesser than the hash of the new machine (on the ring)
-		for(boost::unordered_map<int, Value>::iterator it = keyValueStore.begin(); it != keyValueStore.end(); it++) {
+		for(boost::unordered_map<string, Value>::iterator it = keyValueStore.begin(); it != keyValueStore.end(); it++) {
 			if(getHash(it->first) <= newNodeHash || getHash(it->first) > myNodeHash) {
 			//second condition is for the special case of first machine on the ring
 				keys.push_back(it->first);
@@ -428,9 +427,9 @@ class KeyValueStore {
 	 * @return           [the built commands]
 	 */
 	vector<string> getCommandsForLeave(int *errCode) {
-		vector<int> keys;
+		vector<string> keys;
 		//get all the keys in this store
-		for(boost::unordered_map<int, Value>::iterator it = keyValueStore.begin(); it != keyValueStore.end(); it++) {
+		for(boost::unordered_map<string, Value>::iterator it = keyValueStore.begin(); it != keyValueStore.end(); it++) {
 			keys.push_back(it->first);
 		}
 
@@ -443,7 +442,7 @@ class KeyValueStore {
 	 * @param  num [the key]
 	 * @return     [the hash]
 	 */
-	int getHash(int num) {
+	int getHash(string num) {
 		return Hash::calculateKeyHash(num);
 	}
 

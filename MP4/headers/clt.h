@@ -41,7 +41,7 @@ class KeyValueStoreCommand{
 	//class to store the command for easy access
 	//
 	string operation;
-	int key;
+	string key;
 	string value;
 
 	public:
@@ -49,7 +49,7 @@ class KeyValueStoreCommand{
 	/**
 	 * constructor
 	 */
-	KeyValueStoreCommand(string op, int k, string valueString) {
+	KeyValueStoreCommand(string op, string k, string valueString) {
 		operation = op;
 		key = k;
 		value = valueString;
@@ -59,7 +59,7 @@ class KeyValueStoreCommand{
 		return operation;
 	}
 
-	int getKey() {
+	string getKey() {
 		return key;
 	}
 
@@ -72,10 +72,10 @@ class KeyValueStoreCommand{
 		
 		//for insert and update, we need a valid key and valid value
 		if(operation == INSERT_KEY || operation == UPDATE_KEY) {
-			commandValid = operation != "" && key > 0 && value != ""; 
+			commandValid = operation != "" && key != "" && value != ""; 
 		//for lookup and delete, we need a valid key
 		} else if(operation == LOOKUP_KEY || operation == DELETE_KEY) {
-			commandValid = operation != "" && key > 0;
+			commandValid = operation != "" && key != "";
 		//nothing required for show
 		} else if(operation == SHOW_KVSTORE) {
 			commandValid = 1;
@@ -455,14 +455,14 @@ class CommandLineTools {
 			if(commandString == SHOW_KVSTORE) {
 				operation = SHOW_KVSTORE;
 			}
-			return KeyValueStoreCommand(operation, 0, "");
+			return KeyValueStoreCommand(operation, "", "");
 		}
 
 		operation = commandString.substr(0, firstBracketPos);
 
 		//extract and check operation for validity
 		if(!isValidOperation(operation)) {
-			return KeyValueStoreCommand("", 0, "");
+			return KeyValueStoreCommand("", "", "");
 		}
 
 		//get the first comma position. Key is just after first bracket and just before first comma
@@ -470,14 +470,14 @@ class CommandLineTools {
 		if(firstCommaPos == string::npos) {
 			//if no comma, then the operation has to be lookup or delete, otherwise bail and report malformed command
 			if(operation == INSERT_KEY || operation == UPDATE_KEY) {
-				return KeyValueStoreCommand("", 0, "");
+				return KeyValueStoreCommand("", "", "");
 			} else {
 				firstCommaPos = commandString.length() - 1;
 			}
 		}
 
 		//extract the key
-		int key = atoi(commandString.substr(firstBracketPos + 1, firstCommaPos - firstBracketPos - 1).c_str());
+		string key = commandString.substr(firstBracketPos + 1, firstCommaPos - firstBracketPos - 1);
 		
 		string value;
 		//find the last bracket. value is between first comma and last close bracket
@@ -485,7 +485,7 @@ class CommandLineTools {
 			size_t lastBracketPos = commandString.find_last_of(")");
 			//if no last bracket, bail and report malformed command
 			if(lastBracketPos == string::npos) {
-				return KeyValueStoreCommand("", 0, "");
+				return KeyValueStoreCommand("", "", "");
 			}
 
 			//extract the value
