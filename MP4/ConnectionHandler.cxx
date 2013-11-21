@@ -216,7 +216,7 @@ void* ConnectionHandler::updateKeyValue(void* lp)
     KeyValueStoreCommand command = CommandLineTools::parseKeyValueStoreCmd(received);
     
     string ip;
-    if(command.getOperation() != SHOW_KVSTORE) {
+    if(command.getOperation() != SHOW_KVSTORE && command.isNormalOperation()) {
         /* Find the key */
         keyToInsert = command.getKey();
         /* Calculate the key hash */
@@ -238,33 +238,12 @@ void* ConnectionHandler::updateKeyValue(void* lp)
         <<endl;
 
 
-    if(ptr1->myIP == ip)
+    if(ptr1->myIP == ip || command.isForceOperation())//the second check is superfluous, but keeping it anyway
     {
-        /* If IP same as my IP 
+        /* If IP same as my IP or a force operation
          * Perform the necessary operation 
          * on the local node */
-        int errCode = 0;
-        int status = SUCCESS;
-        
-        cout << "Correct node found, performing " << command.getOperation() << " locally" << endl;
-        if(command.getOperation() == INSERT_KEY) {
-            status = ptr1->getKeyValuePtr()->insertKeyValue(command.getKey(), command.getValue(), &errCode);
-        } else if(command.getOperation() == DELETE_KEY) {
-            status = ptr1->getKeyValuePtr()->deleteKey(command.getKey(), &errCode);
-        } else if(command.getOperation() == UPDATE_KEY) {
-            status = ptr1->getKeyValuePtr()->updateKeyValue(command.getKey(), command.getValue(), &errCode);
-        } else if(command.getOperation() == LOOKUP_KEY) {
-            msg = ptr1->getKeyValuePtr()->lookupKey(command.getKey(), &errCode);
-        } else if(command.getOperation() == SHOW_KVSTORE) {
-            msg = "Key value store entries:\n";
-            msg += ptr1->getKeyValuePtr()->returnAllEntries(&errCode);
-            msg += "Membership list:\n";
-            msg += ptr1->getMemPtr()->getkeyToIPMapDetails();
-        }
-
-        if(command.getOperation() != LOOKUP_KEY && command.getOperation() != SHOW_KVSTORE) {
-            msg = status == SUCCESS ? "Command succeeded" : "Command failed";
-        }
+        msg = ConnectionHandler::storeLocally(command, ptr1->getKeyValuePtr(), ptr1->getMemPtr());
     }    
     else
     {
@@ -284,6 +263,47 @@ void* ConnectionHandler::updateKeyValue(void* lp)
     close(ptr->sock);
     ptr->sock = -1;
     pthread_exit(NULL);
+}
+
+string ConnectionHandler::storeLocally(KeyValueStoreCommand command, KeyValueStore *kvStore, MembershipList *memList) {
+
+        int errCode = 0;
+        int status = SUCCESS;
+        
+        string msg = "";
+        string operation = command.getOperation();
+        string key = command.getKey();
+        string value = command.getValue();
+        
+        cout << "Correct node found, performing " << command.getOperation() << " locally" << endl;
+        if(operation == INSERT_KEY) {//insert
+            status = kvStore->insertKeyValue(key, value, &errCode);
+        } else if(operation == FORCE_INSERT_KEY ) {//force insert
+            status =kvStore->forceInsertKeyValue(key, value, &errCode);
+        } else if(operation == DELETE_KEY) {//delete
+            status =kvStore->deleteKey(key, &errCode);
+        } else if(operation == FORCE_DELETE_KEY) {//force delete
+            status =kvStore->forceDeleteKey(key, &errCode);
+        } else if(operation == UPDATE_KEY) {//update
+            status = kvStore->updateKeyValue(key, value, &errCode);
+        } else if(operation == FORCE_UPDATE_KEY) {//force update
+            status = kvStore->forceUpdateKeyValue(key, value, &errCode);
+        } else if(operation == LOOKUP_KEY) {//lookup
+            msg = kvStore->lookupKey(key, &errCode);
+        } else if(operation == FORCE_LOOKUP_KEY) {//force lookup
+            msg = kvStore->forceLookupKey(key, &errCode);
+        } else if(operation == SHOW_KVSTORE) {//show store
+            msg = "Key value store entries:\n";
+            msg += kvStore->returnAllEntries(&errCode);
+            msg += "Membership list:\n";
+            msg += memList->getkeyToIPMapDetails();
+        }
+
+        if(operation != LOOKUP_KEY && operation != FORCE_LOOKUP_KEY && operation != SHOW_KVSTORE) {
+            msg = status == SUCCESS ? "Command succeeded" : "Command failed";
+        }
+
+        return msg;
 }
 
 void* ConnectionHandler::UDPSocketHandler(void* lp)

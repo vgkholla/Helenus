@@ -203,13 +203,11 @@ class KeyValueStore {
 
 		pthread_mutex_lock (&mutexsum);
 
-		//make the value object
-		Value value = Value(valueString);
-
 		boost::unordered_map<string, Value>::iterator lookupEntry = privateLookupKey(key, errCode, 1);
 		
 		if(lookupEntry != keyValueStore.end()) { //key exists
-			lookupEntry->second = value;
+
+			lookupEntry->second.setValue(valueString);
 		} else { //key does not exist
 			string msg = "Updating key failed. Check if key exists. If not, use insert. Key is " + key;
 			logger->logError(UPDATE_FAILED, msg , errCode);

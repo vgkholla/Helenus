@@ -120,11 +120,16 @@ namespace P2P
             /** Handle connection from a client */
             static void* UDPSocketHandler(void *lp);
             static void* TCPSocketHandler(void *lp);
-            static void* updateKeyValue(void *lp);
-            static void* showCommandPrompt(void *lp);
-  
-            /** Handle File Update Membership List */
             
+            /**Command prompt*/
+            static void* showCommandPrompt(void *lp);
+
+            /**Key value store manipulators*/
+            static void* updateKeyValue(void *lp);
+            static string storeLocally(KeyValueStoreCommand command, KeyValueStore *kvStore, MembershipList *memList);
+  
+            
+            /** Handle File Update Membership List */
             static void* updateMembershipList(void *lp);
             
             /* Send membership List */
