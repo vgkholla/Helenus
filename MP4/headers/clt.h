@@ -29,11 +29,21 @@ using namespace std;
 #define START_ID "^"
 
 //key value store commands
+//normal commands
 #define INSERT_KEY "insert"
-#define LOOKUP_KEY "lookup"
 #define DELETE_KEY "delete"
 #define UPDATE_KEY "update"
+#define LOOKUP_KEY "lookup"
+
+//force commands (for replication)
+#define FORCE_INSERT_KEY "finsert"
+#define FORCE_DELETE_KEY "fdelete"
+#define FORCE_UPDATE_KEY "fupdate"
+#define FORCE_LOOKUP_KEY "flookup"
+
+//other commands
 #define SHOW_KVSTORE "show"
+
 
 
 class KeyValueStoreCommand{
@@ -67,15 +77,23 @@ class KeyValueStoreCommand{
 		return value;
 	}
 
+	int isForceOperation() {
+		return operation == FORCE_DELETE_KEY || operation == FORCE_INSERT_KEY || operation == FORCE_UPDATE_KEY || operation == FORCE_LOOKUP_KEY;
+	}
+
+	int isNormalOperation() {
+		return !isForceOperation();
+	}
+
 	int isValidCommand() {
 		int commandValid = 0;
 		
 		//for insert and update, we need a valid key and valid value
-		if(operation == INSERT_KEY || operation == UPDATE_KEY) {
-			commandValid = operation != "" && key != "" && value != ""; 
+		if(operation == INSERT_KEY || operation == UPDATE_KEY || operation == FORCE_INSERT_KEY || operation == FORCE_UPDATE_KEY) {
+			commandValid = key != "" && value != ""; 
 		//for lookup and delete, we need a valid key
-		} else if(operation == LOOKUP_KEY || operation == DELETE_KEY) {
-			commandValid = operation != "" && key != "";
+		} else if(operation == LOOKUP_KEY || operation == DELETE_KEY || operation == FORCE_LOOKUP_KEY || operation == FORCE_DELETE_KEY) {
+			commandValid = key != "";
 		//nothing required for show
 		} else if(operation == SHOW_KVSTORE) {
 			commandValid = 1;
@@ -435,7 +453,8 @@ class CommandLineTools {
 	 * @return           [validity of operation]
 	 */
 	static int isValidOperation(string operation) {
-		return operation == INSERT_KEY || operation == LOOKUP_KEY || operation == UPDATE_KEY || operation == DELETE_KEY;
+		return operation == INSERT_KEY || operation == LOOKUP_KEY || operation == UPDATE_KEY || operation == DELETE_KEY ||
+				operation == FORCE_INSERT_KEY || operation == FORCE_LOOKUP_KEY || operation == FORCE_UPDATE_KEY || operation == FORCE_DELETE_KEY;
 	}
 
 	/**
@@ -469,7 +488,7 @@ class CommandLineTools {
 		size_t firstCommaPos = commandString.find_first_of(",");
 		if(firstCommaPos == string::npos) {
 			//if no comma, then the operation has to be lookup or delete, otherwise bail and report malformed command
-			if(operation == INSERT_KEY || operation == UPDATE_KEY) {
+			if(operation == INSERT_KEY || operation == UPDATE_KEY || operation == FORCE_INSERT_KEY || operation == FORCE_UPDATE_KEY) {
 				return KeyValueStoreCommand("", "", "");
 			} else {
 				firstCommaPos = commandString.length() - 1;
@@ -481,7 +500,7 @@ class CommandLineTools {
 		
 		string value;
 		//find the last bracket. value is between first comma and last close bracket
-		if(operation == INSERT_KEY || operation == UPDATE_KEY) {
+		if(operation == INSERT_KEY || operation == UPDATE_KEY || operation == FORCE_INSERT_KEY || operation == FORCE_UPDATE_KEY) {
 			size_t lastBracketPos = commandString.find_last_of(")");
 			//if no last bracket, bail and report malformed command
 			if(lastBracketPos == string::npos) {

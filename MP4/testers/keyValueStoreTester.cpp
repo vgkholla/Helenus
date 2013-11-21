@@ -58,6 +58,14 @@ int main() {
 				cout<<keyValueStore1->lookupKey(command.getKey(), &errCode)<<endl;
 			} else if(command.getOperation() == SHOW_KVSTORE) {
 				keyValueStore1->show(&errCode);
+			} else if(command.getOperation() == FORCE_INSERT_KEY) {
+				keyValueStore1->forceInsertKeyValue(command.getKey(), command.getValue(), &errCode);
+			} else if(command.getOperation() == FORCE_DELETE_KEY) {
+				keyValueStore1->forceDeleteKey(command.getKey(), &errCode);
+			} else if(command.getOperation() == FORCE_UPDATE_KEY) {
+				keyValueStore1->forceUpdateKeyValue(command.getKey(), command.getValue(), &errCode);
+			} else if(command.getOperation() == FORCE_LOOKUP_KEY) {
+				cout<<keyValueStore1->forceLookupKey(command.getKey(), &errCode)<<endl;
 			}
 			
 		} else {

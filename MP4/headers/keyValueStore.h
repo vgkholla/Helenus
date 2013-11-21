@@ -19,6 +19,9 @@
 #include "Hash.h"
 #include "coordinator.h"
 
+#define KEY_REPLICATED 0
+#define KEY_OWNED 1
+
 using namespace std;
 
 class Value {
@@ -108,26 +111,115 @@ class KeyValueStore {
 		return SUCCESS;
 	}
 
-	vector<string> getOwnedKeys(int *errCode) {
-		vector<string> keys;
-		for(boost::unordered_map<string, Value>::iterator it = keyValueStore.begin(); it != keyValueStore.end(); it++) {
-			if(it->second.isOwner()) {
-				keys.push_back(it->first);
-			}
+	/**
+	 * [inserts a key into the key value store]
+	 * @param  key         [the key]
+	 * @param  valueString [the value]
+	 * @param  errCode     [place to store errors]
+	 * @return             [status of insert]
+	 */
+	int privateInsertKeyValue(string key, string valueString, int owned, int *errCode) {
+		//check for preexisting error
+		int status = checkForPreExistingError(errCode, __func__);
+		if (status == FAILURE) {
+			return status;
 		}
 
-		return keys;
+		pthread_mutex_lock (&mutexsum);
+
+		//make the value object
+		Value value = Value(valueString);
+		if(owned) {
+			value.setAsOwner();
+		} else {
+			value.setAsReplica();
+		}
+
+		//try to look the key up first
+		boost::unordered_map<string, Value>::iterator lookupEntry = privateLookupKey(key, errCode, 1);
+
+		if(lookupEntry == keyValueStore.end()) { //key does not exist
+			//insert
+			status = int(keyValueStore.insert(make_pair(key, value)).second);
+		} else { //key exists
+			string msg = "Tried to insert a key which already exists. Key is " + key;
+			logger->logError(KEY_EXISTS, msg , errCode);
+			*errCode = KEY_EXISTS;
+			status = FAILURE;
+		}
+
+		pthread_mutex_unlock (&mutexsum);
+		//error check
+		if(status == FAILURE){
+			string msg = "Inserting key failed. Key is " + key;
+			logger->logError(INSERT_FAILED, msg , errCode);
+		}
+
+		return status;
 	}
 
-	vector<string> getReplicatedKeys(int *errCode) {
-		vector<string> keys;
-		for(boost::unordered_map<string, Value>::iterator it = keyValueStore.begin(); it != keyValueStore.end(); it++) {
-			if(it->second.isReplica()) {
-				keys.push_back(it->first);
-			}
+	/**
+	 * [deletes the specified key]
+	 * @param  key     [the key]
+	 * @param  errCode [place to store error code]
+	 * @return         [the status of delete]
+	 */
+	int privateDeleteKey(string key, int *errCode) {
+		//check for preexisting error
+		int status = checkForPreExistingError(errCode, __func__);
+		if (status == FAILURE) {
+			return status;
 		}
 
-		return keys;
+		pthread_mutex_lock (&mutexsum);
+		//delete the key
+		int elementsErased = keyValueStore.erase(key);
+
+		if (elementsErased == 0) {//none deleted?
+			string msg = "Tried to delete a key which does not exist. Key is " + key;
+			logger->logError(NO_SUCH_KEY, msg , errCode);
+		} else if (elementsErased > 1) {//too many deleted? (should not happen!)
+			string msg = "Found more than one matching key and deleted them all! Key is " + key;
+			logger->logError(TOO_MANY_KEYS, msg, errCode);
+		}
+		pthread_mutex_unlock (&mutexsum);
+
+		return status;
+	}
+
+	/**
+	 * [update the value of a key]
+	 * @param  key         [the key]
+	 * @param  valueString [the new value]
+	 * @param  errCode     [place to store error code]
+	 * @return             [status of update]
+	 */
+	int privateUpdateKeyValue(string key, string valueString, int *errCode) {
+		//check for preexisting error
+		int status = checkForPreExistingError(errCode, __func__);
+		if (status == FAILURE) {
+			return status;
+		}
+
+		pthread_mutex_lock (&mutexsum);
+
+		//make the value object
+		Value value = Value(valueString);
+
+		boost::unordered_map<string, Value>::iterator lookupEntry = privateLookupKey(key, errCode, 1);
+		
+		if(lookupEntry != keyValueStore.end()) { //key exists
+			lookupEntry->second = value;
+		} else { //key does not exist
+			string msg = "Updating key failed. Check if key exists. If not, use insert. Key is " + key;
+			logger->logError(UPDATE_FAILED, msg , errCode);
+			*errCode = UPDATE_FAILED;
+			status = FAILURE;
+		}
+
+		pthread_mutex_unlock (&mutexsum);
+
+		return status;
 	}
 
 	/**
@@ -137,7 +229,7 @@ class KeyValueStore {
 	 * @param  suppressError [if true, doesn't log an errors]
 	 * @return               [the iterator in the hash map which points to the key]
 	 */
-	boost::unordered_map<string, Value>::iterator lookupKey(string key, int *errCode, int suppressError) {
+	boost::unordered_map<string, Value>::iterator privateLookupKey(string key, int *errCode, int suppressError) {
 		boost::unordered_map<string, Value>::iterator entry = keyValueStore.end();
 
 		//check for preexisting error
@@ -160,6 +252,15 @@ class KeyValueStore {
 
 		return entry;
 
+	}
+
+	/**
+	 * [gets the hash of a key]
+	 * @param  num [the key]
+	 * @return     [the hash]
+	 */
+	int getHash(string num) {
+		return Hash::calculateKeyHash(num);
 	}
 
 	/**
@@ -207,6 +308,39 @@ class KeyValueStore {
 		return commands;
 	} 
 
+	/**
+	 * [gets all keys owned by this machine]
+	 * @param  errCode [space to store error code if any]
+	 * @return         [the list of keys owned by this machine]
+	 */
+	vector<string> getOwnedKeys(int *errCode) {
+		vector<string> keys;
+		for(boost::unordered_map<string, Value>::iterator it = keyValueStore.begin(); it != keyValueStore.end(); it++) {
+			if(it->second.isOwner()) {
+				keys.push_back(it->first);
+			}
+		}
+
+		return keys;
+	}
+
+	/**
+	 * [gets all keys replicated by this machine]
+	 * @param  errCode [space to store error code if any]
+	 * @return         [the list of keys replicated by this machine]
+	 */
+	vector<string> getReplicatedKeys(int *errCode) {
+		vector<string> keys;
+		for(boost::unordered_map<string, Value>::iterator it = keyValueStore.begin(); it != keyValueStore.end(); it++) {
+			if(it->second.isReplica()) {
+				keys.push_back(it->first);
+			}
+		}
+
+		return keys;
+	}
+
+
 	public:
 	/**
 	 * Constructor. Supply ID of machine which will own the key value store and the logger object of the machine
@@ -220,111 +354,72 @@ class KeyValueStore {
 		pthread_mutex_init(&mutexsum, NULL);
 	}
 
+	
 	/**
-	 * [inserts a key into the key value store]
+	 * [public interface for normal insert]
 	 * @param  key         [the key]
 	 * @param  valueString [the value]
 	 * @param  errCode     [place to store errors]
 	 * @return             [status of insert]
 	 */
 	int insertKeyValue(string key, string valueString, int *errCode) {
-		//check for preexisting error
-		int status = checkForPreExistingError(errCode, __func__);
-		if (status == FAILURE) {
-			return status;
-		}
+		return privateInsertKeyValue(key, valueString, KEY_OWNED, errCode);
+	}
 
-		pthread_mutex_lock (&mutexsum);
 
-		//make the value object
-		Value value = Value(valueString);
-
-		//try to look the key up first
-		boost::unordered_map<string, Value>::iterator lookupEntry = lookupKey(key, errCode, 1);
-
-		if(lookupEntry == keyValueStore.end()) { //key does not exist
-			//insert
-			status = int(keyValueStore.insert(make_pair(key, value)).second);
-		} else { //key exists
-			string msg = "Tried to insert a key which already exists. Key is " + key;
-			logger->logError(KEY_EXISTS, msg , errCode);
-			*errCode = KEY_EXISTS;
-			status = FAILURE;
-		}
-
-		pthread_mutex_unlock (&mutexsum);
-		//error check
-		if(status == FAILURE){
-			string msg = "Inserting key failed. Key is " + key;
-			logger->logError(INSERT_FAILED, msg , errCode);
-		}
-
-		return status;
+	/**
+	 * [public interface for force insert]
+	 * @param  key         [the key]
+	 * @param  valueString [the value]
+	 * @param  errCode     [place to store errors]
+	 * @return             [status of insert]
+	 */
+	int forceInsertKeyValue(string key, string valueString, int *errCode) {
+		return privateInsertKeyValue(key, valueString, KEY_REPLICATED, errCode);
 	}
 
 	/**
-	 * [deletes the specified key]
+	 * [public interface for normal delete]
 	 * @param  key     [the key]
 	 * @param  errCode [place to store error code]
 	 * @return         [the status of delete]
 	 */
 	int deleteKey(string key, int *errCode) {
-		//check for preexisting error
-		int status = checkForPreExistingError(errCode, __func__);
-		if (status == FAILURE) {
-			return status;
-		}
-
-		pthread_mutex_lock (&mutexsum);
-		//delete the key
-		int elementsErased = keyValueStore.erase(key);
-
-		if (elementsErased == 0) {//none deleted?
-			string msg = "Tried to delete a key which does not exist. Key is " + key;
-			logger->logError(NO_SUCH_KEY, msg , errCode);
-		} else if (elementsErased > 1) {//too many deleted? (should not happen!)
-			string msg = "Found more than one matching key and deleted them all! Key is " + key;
-			logger->logError(TOO_MANY_KEYS, msg, errCode);
-		}
-		pthread_mutex_unlock (&mutexsum);
-
-		return status;
+		return privateDeleteKey(key, errCode);
 	}
 
 	/**
-	 * [update the value of a key]
+	 * [public interface for force delete]
+	 * @param  key     [the key]
+	 * @param  errCode [place to store error code]
+	 * @return         [the status of delete]
+	 */
+	int forceDeleteKey(string key, int *errCode) {
+		return privateDeleteKey(key, errCode);
+	}
+
+	/**
+	 * [public interface for normal update of key]
 	 * @param  key         [the key]
 	 * @param  valueString [the new value]
 	 * @param  errCode     [place to store error code]
 	 * @return             [status of update]
 	 */
 	int updateKeyValue(string key, string valueString, int *errCode) {
-		//check for preexisting error
-		int status = checkForPreExistingError(errCode, __func__);
-		if (status == FAILURE) {
-			return status;
-		}
-
-		pthread_mutex_lock (&mutexsum);
-
-		//make the value object
-		Value value = Value(valueString);
-
-		boost::unordered_map<string, Value>::iterator lookupEntry = lookupKey(key, errCode, 1);
-		
-		if(lookupEntry != keyValueStore.end()) { //key exists
-			lookupEntry->second = value;
-		} else { //key does not exist
-			string msg = "Updating key failed. Check if key exists. If not, use insert. Key is " + key;
-			logger->logError(UPDATE_FAILED, msg , errCode);
-			*errCode = UPDATE_FAILED;
-			status = FAILURE;
-		}
-
-		pthread_mutex_unlock (&mutexsum);
-
-		return status;
+		return privateUpdateKeyValue(key, valueString, errCode);
 	}
+
+	/**
+	 * [public interface for force update of key]
+	 * @param  key         [the key]
+	 * @param  valueString [the new value]
+	 * @param  errCode     [place to store error code]
+	 * @return             [status of update]
+	 */
+	int forceUpdateKeyValue(string key, string valueString, int *errCode) {
+		return privateUpdateKeyValue(key, valueString, errCode);
+	}
+
 
 	/**
 	 * [public interface of lookup key. does not allow suppressing of errors]
@@ -335,7 +430,7 @@ class KeyValueStore {
 	string lookupKey(string key, int *errCode) {
 		string value = "";
 		//get the entry
-		boost::unordered_map<string, Value>::iterator lookupEntry = lookupKey(key, errCode, 0);
+		boost::unordered_map<string, Value>::iterator lookupEntry = privateLookupKey(key, errCode, 0);
 		//if lookup did not fail, extract the value
 		if(lookupEntry != keyValueStore.end()) {
 			 value = lookupEntry->second.getValue();
@@ -344,6 +439,15 @@ class KeyValueStore {
 		return value;
 	}
 
+	/**
+	 * [public interface of force lookup key. does not allow suppressing of errors]
+	 * @param  key     [key to lookup]
+	 * @param  errCode [place to store error code]
+	 * @return         [the value of key]
+	 */
+	string forceLookupKey(string key, int *errCode) {
+		return lookupKey(key, errCode);
+	}
 	/**
 	 * [returns all entries in the key value store]
 	 * @param  errCode [place to store errors]
@@ -360,6 +464,7 @@ class KeyValueStore {
 		//build all the entries in the store as key:value
 		int i = 0;
 		for(boost::unordered_map<string, Value>::iterator it = keyValueStore.begin(); it != keyValueStore.end(); it++) {
+			value += it->second.isOwner() ? "(Owned) " : "(Replicated) ";
 			value += it->first;
 			value += ":";
 			value += it->second.getValue();
@@ -392,12 +497,17 @@ class KeyValueStore {
 		}
 	}
 
+
+	/*************************EVENT HANDLERS**********************************/
+
+
 	/**
 	 *	[builds commands for keys to be sent when a machine joins]
 	 * @param  errCode 	 [space to store error code]
 	 * @return           [the built commands]
 	 */
 	vector<string> getCommandsForJoin(Message message, int *errCode) {
+		//*****************UPGRADE THIS FOR MP4. Might need to split it up*****************
 		vector<string> keys;
 		int newNodeHash = message.getNewMemberHash();
 		int myNodeHash = message.getSelfHash();
@@ -415,7 +525,7 @@ class KeyValueStore {
 		
 		//delete from this store
 		for(int i=0; i < keys.size(); i++) {
-			deleteKey(keys[i], errCode);
+			privateDeleteKey(keys[i], errCode);
 		}
 
 		return commands;
@@ -427,6 +537,7 @@ class KeyValueStore {
 	 * @return           [the built commands]
 	 */
 	vector<string> getCommandsForLeave(int *errCode) {
+		//*****************UPGRADE THIS FOR MP4. Might need to split it up*****************
 		vector<string> keys;
 		//get all the keys in this store
 		for(boost::unordered_map<string, Value>::iterator it = keyValueStore.begin(); it != keyValueStore.end(); it++) {
@@ -437,15 +548,7 @@ class KeyValueStore {
 		return getCommands(INSERT_KEY, keys, errCode);
 	} 	
 
-	/**
-	 * [gets the hash of a key]
-	 * @param  num [the key]
-	 * @return     [the hash]
-	 */
-	int getHash(string num) {
-		return Hash::calculateKeyHash(num);
-	}
-
+	//******************ADD ONE FOR FAILURE HERE**********************************
 
 };
 
