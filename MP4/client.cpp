@@ -58,57 +58,7 @@ int main(int argc,
             }
         }
     }
-
-#if 0
-    struct sockaddr_in my_addr;
-
-    char buffer[1024];
-    char revbuf[SIZE];
-    int bytecount;
-    int buffer_len=0;
-
-    int hsock;
-    int *p_int;
-    int err;
-    /* Open socket to connect to
-       Bugsy Inc logging system
-     */
-
-    hsock = socket(AF_INET, SOCK_STREAM, 0);
-    if(hsock == -1){
-        cout << "Error initializing socket " << strerror(errno) << endl;
-        exit(1);
-    }
     
-    p_int = (int*)malloc(sizeof(int));
-    *p_int = 1;
-        
-    if( (setsockopt(hsock, SOL_SOCKET, SO_REUSEADDR, (char*)p_int, sizeof(int)) == -1 )||
-        (setsockopt(hsock, SOL_SOCKET, SO_KEEPALIVE, (char*)p_int, sizeof(int)) == -1 ) ){
-        cout << "Error setting socket options " << strerror(errno) << endl;
-        free(p_int);
-        exit(1);
-    }
-    free(p_int);
-
-    my_addr.sin_family = AF_INET ;
-    my_addr.sin_port = htons(host_port);
-    
-    memset(&(my_addr.sin_zero), 0, 8);
-    my_addr.sin_addr.s_addr = inet_addr(host_name.c_str());
-
-    cout << "Connecting to Bugsy Logging System " << endl;
-
-    buffer_len = 1024;
-    memset(buffer, '\0', buffer_len);
-
-    if( connect( hsock, (struct sockaddr*)&my_addr, sizeof(my_addr)) == -1 ){
-        if((err = errno) != EINPROGRESS){
-            cout << "Error connecting socket " << strerror(errno) << endl;
-                exit(1);
-            }
-    }
-#endif
     string cmdToSend;
     if(cmd == "") {
         cmdToSend = CommandLineTools::showAndHandlePrompt("1");
