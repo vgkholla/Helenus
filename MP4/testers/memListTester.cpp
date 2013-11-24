@@ -5,31 +5,6 @@
 
 using namespace std;
 
-void createList1(MembershipList *memList) {
-	
-}
-
-void createList2(MembershipList *memList) {
-
-}
-
-void createList3(MembershipList *memList) {
-	/*MembershipDetails entry;
-	entry.id = Utility::intToString(2);
-	entry.heartbeat = 10;
-	entry.localTimestamp = time(0);
-	memList->addToList(entry);*/
-}
-
-void createList4(MembershipList *memList) {
-	/*MembershipDetails entry;
-	entry.id = Utility::intToString(2);
-	entry.heartbeat = 11;
-	entry.localTimestamp = time(0);
-	memList->addToList(entry);*/
-}
-
-
 int main() {
 
 	//cout<<MembershipList::getNetworkID("192.16.17.11")<<endl;
@@ -56,18 +31,12 @@ int main() {
 	MembershipList *memList3 = new MembershipList(machine3ID, "127.0.0.3:0", logger3, coord3);
 	MembershipList *memList4 = new MembershipList(machine4ID, "127.0.0.4:0", logger4, coord4);
 
-
-	createList1(memList1);
-	createList2(memList2);
-	createList3(memList3);
-	createList4(memList4);
-
 	memList1->incrementHeartbeat(1, &errCode);
 	memList2->incrementHeartbeat(2, &errCode);
 	memList3->incrementHeartbeat(3, &errCode);
 	memList4->incrementHeartbeat(4, &errCode);
 
-	cout<<"List 1: "<<endl;
+	/*cout<<"List 1: "<<endl;
 	memList1->printMemList();
 	cout<<endl;
 
@@ -81,92 +50,51 @@ int main() {
 
 	cout<<"List 4: "<<endl;
 	memList4->printMemList();
-	cout<<endl;
+	cout<<endl;*/
 
 	memList1->updateMembershipList(memList2, &errCode);
 	memList1->updateMembershipList(memList3, &errCode);
 	memList1->updateMembershipList(memList4, &errCode);
-	memList1->processList(&errCode);
+
+	memList2->updateMembershipList(memList4, &errCode);
+	memList2->updateMembershipList(memList3, &errCode);
+
+	memList3->updateMembershipList(memList4, &errCode);
+
+	//memList1->processList(&errCode);
 		
 
-	cout<<"Current time: "<<time(0)<<endl;
-	cout<<"Modified List 1: "<<endl;
-	memList1->printMemList();
 
-	//memList1->writeIPsToFile(&errCode);
 
-	/*memList2->updateMembershipList(memList3, &errCode);
-	cout<<"have to send to: "<<endl;
-	vector<string> ips;
-	memList2->getListOfMachinesToSendTo(0.5, &ips, &errCode);
-	for(int i=0; i< ips.size(); i++) {
-		cout<<ips.at(i)<<endl;
-	}
-	*/
+	cout<<endl<<endl<<"Final Details: "<<endl;	
+	cout<<"Key to IP map of machine 1 is: "<<endl;
+	cout<<memList1->getkeyToIPMapDetails()<<endl;
 
-	/*
-	cout<<"have to send to: "<<endl;
-	vector<string> ips;
-	memList1->getListOfMachinesToSendTo(0.5, &ips, &errCode);
-	for(int i=0; i< ips.size(); i++) {
-		cout<<ips.at(i)<<endl;
-	}
-	 */
+	cout<<"Key to IP map of machine 2 is: "<<endl;
+	cout<<memList2->getkeyToIPMapDetails()<<endl;
+
+	cout<<"Key to IP map of machine 3 is: "<<endl;
+	cout<<memList3->getkeyToIPMapDetails()<<endl;
+
+	cout<<"Key to IP map of machine 4 is: "<<endl;
+	cout<<memList4->getkeyToIPMapDetails()<<endl;
+
+	cout<<"Machine 1"<<endl;
+	cout<<memList1->getIPofFirstReplica()<<endl;
+	cout<<memList1->getIPofSecondReplica()<<endl;
 	
-	/*vector<string> ips;
-	memList1->readIPsFromFile(&ips, &errCode);
-	cout<<"List of ips from the file is"<<endl;
-	for(int i=0; i< ips.size(); i++) {
-		cout<<ips.at(i)<<endl;
-	}*/
 
-	/*vector<string> ips;
-	memList1->getListOfMachinesToSendTo(0.5, &ips, &errCode);
+	cout<<"Machine 2"<<endl;
+	cout<<memList2->getIPofFirstReplica()<<endl;
+	cout<<memList2->getIPofSecondReplica()<<endl;
 
-	cout<<"The ips are: "<<endl;
-	for(int j =0; j < ips.size(); j++) {
-		cout<<ips.at(j)<<endl;
-	}*/
+	cout<<"Machine 3"<<endl;
+	cout<<memList3->getIPofFirstReplica()<<endl;
+	cout<<memList3->getIPofSecondReplica()<<endl;
 
-	/**
-	
-	memList2->incrementHeartbeat(1, &errCode);
-	 
-	memList2->requestRetirement(&errCode);
-
-
-	sleep(3);
-	cout<<"Current time: "<<time(0)<<endl;
-	memList1->incrementHeartbeat(1, &errCode);
-
-	memList1->updateMembershipList(memList2, &errCode);
-	memList1->updateMembershipList(memList3, &errCode);
-	memList1->updateMembershipList(memList4, &errCode);
-	memList1->processList(&errCode);
-	cout<<"Modified List 1: "<<endl;
-	memList1->printMemList();
-
-	sleep(3);
-	memList1->incrementHeartbeat(1, &errCode);
-
-	memList1->updateMembershipList(memList2, &errCode);
-	memList1->updateMembershipList(memList3, &errCode);
-	memList1->updateMembershipList(memList4, &errCode);
-	memList1->processList(&errCode);
-
-	cout<<"Current time: "<<time(0)<<endl;
-	cout<<"Modified List 1: "<<endl;
-	memList1->printMemList();
-
-	sleep(3);
-	memList1->incrementHeartbeat(1, &errCode);
-	memList1->processList(&errCode);
-
-	cout<<"Current time: "<<time(0)<<endl;
-	cout<<"Modified List 1: "<<endl;
-	memList1->printMemList();
-
-	*/
+	cout<<"Machine 4"<<endl;
+	cout<<memList4->getIPofFirstReplica()<<endl;
+	cout<<memList4->getIPofSecondReplica()<<endl;
 
 	return 0;
 }

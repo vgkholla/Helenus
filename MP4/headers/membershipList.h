@@ -92,7 +92,7 @@ class MembershipList {
 	//the coordinator
 	Coordinator *coordinator;
 	//hash of the machine that owns this membership list
-	int myHash;
+	int selfHash;
 	//lock for operations
 	pthread_mutex_t mutexsum;
 	
@@ -144,7 +144,6 @@ class MembershipList {
                        
 
 	}
-
 
 	void printkeyToIPMap() {
 		cout<<"Key to IP map is: "<<endl;
@@ -471,7 +470,7 @@ class MembershipList {
 
         itLow = keyToIPMap.find(nodeHash);
         string ip = itLow->second;
-        itUp = keyToIPMap.find(myHash);
+        itUp = keyToIPMap.find(selfHash);
 
         int transferRequired = 0;
         /* there should be more than one node */
@@ -483,7 +482,7 @@ class MembershipList {
                     cout << "New node joined with node hash " 
                          << nodeHash 
                          << "and distance between the new hash and my own hash " 
-                         << myHash 
+                         << selfHash 
                          << " is " 
                          << distance 
                          << endl;
@@ -500,7 +499,7 @@ class MembershipList {
         	//build the message
         	Message message;
         	message.setReason(REASON_JOIN);
-        	message.setSelfHash(myHash);
+        	message.setSelfHash(selfHash);
         	message.setNewMemberHash(nodeHash);
         	//store it in the coordinator
         	coordinator->pushMessage(message);
@@ -527,14 +526,14 @@ class MembershipList {
 		entry.localTimestamp = time(0);
 		entry.nodeID = Hash::calculateNodeHash(networkID);
 		
-		myHash = entry.nodeID;
+		selfHash = entry.nodeID;
         
 		addToList(entry);
 
 		updateTimeToCleanup();
 		updateTimeToFailure();
 
-		cout << "My node has value " << myHash << endl;
+		cout << "My node has value " << selfHash << endl;
 	}
     
     /**
@@ -703,24 +702,32 @@ class MembershipList {
     }
 
     string getIPofSuccessor() {
-    	map<int,string>::iterator it;
-    	map<int,string>::iterator successor = keyToIPMap.end();
+    	return getIPAtDistance(1);
+    }
 
-		for (it=keyToIPMap.begin(); it!=keyToIPMap.end(); ++it){
-	        if(it->first == myHash) {
-	        	it++;
-	        	successor = it;
-	        	break;
-	        }
-		}
+    string getIPofFirstReplica() {
+    	return getIPAtDistance(1);
+    }
 
-    	if(successor == keyToIPMap.end()) {
-    		successor = keyToIPMap.begin();
+    string getIPofSecondReplica() {
+    	return getIPAtDistance(2);
+    }
+
+    string getIPAtDistance(int distance) {
+    	if(distance + 1 > keyToIPMap.size()) {
+    		return "";
+    	}
+    	map<int,string>::iterator selfEntry = keyToIPMap.find(selfHash);
+    	map<int,string>::iterator requiredMachine = selfEntry;
+    	while(distance > 0) {
+    		requiredMachine++;
+    		if(requiredMachine == keyToIPMap.end()) {
+    			requiredMachine = keyToIPMap.begin();
+    		}
+    		distance--;
     	}
 
-    	cout << "Leaving and moving the keys to my successor with IP " << successor->second << " and hash " << successor->first << endl;
-
-    	return successor->second;
+    	return requiredMachine->second;
     }
 
 	/**

@@ -468,8 +468,13 @@ void ConnectionHandler::sendMemberList(vector<string> memberIPs)
             //send the keys to another machine if I am leaving the system
             vector<string> commands = this->getKeyValuePtr()->getCommandsForLeave(&errorcode);
             string ip = this->getMemPtr()->getIPofSuccessor();
-            for(i = 0; i < commands.size() ; i++) {
-                Utility::tcpConnectSocket(ip,SERVER_PORT,commands[i]);
+            if(ip != "") {
+                cout << "Leaving and moving the keys to my successor with IP " << ip << endl;
+                for(i = 0; i < commands.size() ; i++) {
+                    Utility::tcpConnectSocket(ip,SERVER_PORT,commands[i]);
+                }
+            } else {
+                cout<<"No successor to send keys to. Alas! these keys will be lost forever (weeps)"<<endl;
             }
 
             string msg = "Elvis has left the building";
