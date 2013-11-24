@@ -243,7 +243,20 @@ void* ConnectionHandler::updateKeyValue(void* lp)
         /* If IP same as my IP or a force operation
          * Perform the necessary operation 
          * on the local node */
-        msg = ConnectionHandler::storeLocally(command, ptr1->getKeyValuePtr(), ptr1->getMemPtr());
+
+        //if this is not a show and not a force operation, then this machine is the owner of the key
+        //For replication, send force operations to replicas
+        int replicaExists = 0;
+        int consistentReplicas = 1;
+        string replicaMsg;
+        if(command.getOperation() != SHOW_KVSTORE && command.isNormalOperation()) {
+            replicaMsg = ConnectionHandler::sendForceOperations(received, ptr1->getMemPtr(), &replicaExists, &consistentReplicas);
+        }
+
+        msg = ConnectionHandler::performOperationLocally(command, ptr1->getKeyValuePtr(), ptr1->getMemPtr());
+        if(replicaExists && (!consistentReplicas || msg != replicaMsg)) {
+            msg = "Agreement Failure";
+        }
     }    
     else
     {
@@ -265,7 +278,34 @@ void* ConnectionHandler::updateKeyValue(void* lp)
     pthread_exit(NULL);
 }
 
-string ConnectionHandler::storeLocally(KeyValueStoreCommand command, KeyValueStore *kvStore, MembershipList *memList) {
+string ConnectionHandler::sendForceOperations(string command, MembershipList *memList, int *replicaExists, int *consistentReplicas) {
+    command = "f" + command;
+    
+    string replyFromFirstReplica = "";
+    string replyFromSecondReplica = "";
+    string firstReplicaIP = memList->getIPofFirstReplica();
+    if(firstReplicaIP != "") {
+        *replicaExists = 1;
+        
+        replyFromFirstReplica = Utility::tcpConnectSocket(firstReplicaIP,SERVER_PORT,command);
+
+        string secondReplicaIP = memList->getIPofSecondReplica();
+        if(secondReplicaIP != "") {
+            replyFromSecondReplica = Utility::tcpConnectSocket(secondReplicaIP,SERVER_PORT,command);
+        } else {
+            replyFromSecondReplica = replyFromFirstReplica;
+        }
+    }
+
+    if(replyFromFirstReplica != replyFromSecondReplica) {
+        *consistentReplicas = 0;
+    }
+
+    return replyFromFirstReplica;
+
+}
+
+string ConnectionHandler::performOperationLocally(KeyValueStoreCommand command, KeyValueStore *kvStore, MembershipList *memList) {
 
         int errCode = 0;
         int status = SUCCESS;

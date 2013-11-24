@@ -126,7 +126,8 @@ namespace P2P
 
             /**Key value store manipulators*/
             static void* updateKeyValue(void *lp);
-            static string storeLocally(KeyValueStoreCommand command, KeyValueStore *kvStore, MembershipList *memList);
+            static string sendForceOperations(string command, MembershipList *memList, int *replicaExists, int *consistentReplicas);
+            static string performOperationLocally(KeyValueStoreCommand command, KeyValueStore *kvStore, MembershipList *memList);
   
             
             /** Handle File Update Membership List */
