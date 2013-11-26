@@ -254,7 +254,7 @@ void* ConnectionHandler::updateKeyValue(void* lp)
         }
 
         msg = ConnectionHandler::performOperationLocally(command, ptr1->getKeyValuePtr(), ptr1->getMemPtr());
-        if(replicaExists && (!consistentReplicas || msg != replicaMsg)) {
+        if(msg != "Command failed" && replicaExists && (!consistentReplicas || msg != replicaMsg)) {
             msg = "Agreement Failure";
         }
     }    
@@ -576,16 +576,21 @@ void ConnectionHandler::handleJoinEvent(Message message, KeyValueStore *kvStore,
 void ConnectionHandler::handleLeaveEvent(ErrorLog *logger, KeyValueStore *kvStore, MembershipList *memList) {
     //send the keys to another machine if I am leaving the system
     int errCode = 0;
-    /*vector<string> commands = kvStore->getCommandsForLeave(&errCode);
+    vector<string> ownedKeysCommands = kvStore->getCommandsToTransferOwnedKeysAtLeave(&errCode);
+
+
     string ip = memList->getIPofSuccessor();
     if(ip != "") {
         cout << "Leaving and moving the keys to my successor with IP " << ip << endl;
-        for(int i = 0; i < commands.size() ; i++) {
-            Utility::tcpConnectSocket(ip,SERVER_PORT,commands[i]);
+        for(int i = 0; i < ownedKeysCommands.size() ; i++) {
+            Utility::tcpConnectSocket(ip,SERVER_PORT,ownedKeysCommands[i]);
         }
+        cout<<"Moved "<<ownedKeysCommands.size()<<" keys"<<endl;
+
+
     } else {
-        cout<<"No successor to send keys to. Alas! these keys will be lost forever (weeps)"<<endl;
-    }*/
+        cout<<"No machines to send keys to. Alas! these keys will be lost forever (weeps)"<<endl;
+    }
 
     string msg = "Elvis has left the building";
     errCode = 0;

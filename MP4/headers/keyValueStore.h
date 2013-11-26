@@ -143,11 +143,11 @@ class KeyValueStore {
 		if(lookupEntry == keyValueStore.end()) { //key does not exist
 			//insert
 			status = int(keyValueStore.insert(make_pair(key, value)).second);
-		} else { //key exists
-			string msg = "Tried to insert a key which already exists. Key is " + key;
-			logger->logError(KEY_EXISTS, msg , errCode);
-			*errCode = KEY_EXISTS;
-			status = FAILURE;
+		} else if(owned) {//key exists and is owned. (if force insert, just ignore a reinsert attempt)
+				string msg = "Tried to insert a key which already exists. Key is " + key;
+				logger->logError(KEY_EXISTS, msg , errCode);
+				*errCode = KEY_EXISTS;
+				status = FAILURE;
 		}
 
 		pthread_mutex_unlock (&mutexsum);

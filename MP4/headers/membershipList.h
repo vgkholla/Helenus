@@ -774,6 +774,11 @@ class MembershipList {
     	return getIPAtDistance(2);
     }
 
+    /*** leave helper functions ***/
+    int isReplicatedKeysSendingRequiredForLeave() {
+    	return keyToIPMap.size() > 3;
+    }
+
 
     /*** position functions end****/
 
