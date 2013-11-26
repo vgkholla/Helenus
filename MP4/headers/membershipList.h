@@ -477,6 +477,14 @@ class MembershipList {
         	message.setReason(REASON_JOIN);
         	message.setSelfHash(selfHash);
         	message.setNewMemberHash(newNodeHash);
+
+        	int newMachineOwnedRangeStart = -1;
+        	if(keyToIPMap.size() == 2) {//special case of only two machines. Each machine is the predecessor and successor of each other
+        		newMachineOwnedRangeStart = selfHash;
+        	} else {//in this case the predecessor of the new machine is the second predecessor of this machine
+        		newMachineOwnedRangeStart = getHashOfSecondPredecessor(selfHash);
+        	}
+        	message.setNewMachineOwnedRangeStart(newMachineOwnedRangeStart);
         	
         	//store it in the coordinator
         	coordinator->pushMessage(message);
@@ -544,6 +552,10 @@ class MembershipList {
 
     int isPredecessor(int nodeHash) {
     	return nodeHash == getHashAtDistance(-1);
+    }
+
+    int getHashOfSecondPredecessor(int nodeHash) {
+    	return getHashAtDistance(-2);
     }
 
 	public:

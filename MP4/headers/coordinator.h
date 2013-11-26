@@ -19,6 +19,7 @@ class Message {
 
 	//for join
 	int newMemberHash;//if reason is join, the hash of new member
+	int newMachineOwnedRangeStart; //the start of the owned range for the new machine
 	
 	//for failure
 	int failedMemberHash;//if reason is failure, the hash of the machine that failed
@@ -29,6 +30,8 @@ class Message {
 		selfHash = -1;
 
 		newMemberHash = -1;
+		newMachineOwnedRangeStart = -1;
+
 		failedMemberHash = -1;
 	}
 
@@ -43,6 +46,14 @@ class Message {
 
 	int getNewMemberHash() {
 		return newMemberHash;
+	}
+
+	int getNewMachineOwnedRangeStart() {
+		return newMachineOwnedRangeStart;
+	}
+
+	int getNewMachineOwnedRangeEnd() {
+		return getNewMemberHash();
 	}
 
 	int getFailedMemberHash() {
@@ -60,6 +71,10 @@ class Message {
 
 	void setNewMemberHash(int hash) {
 		newMemberHash = hash;
+	}
+
+	void setNewMachineOwnedRangeStart(int hash) {
+		newMachineOwnedRangeStart = hash;
 	}
 
 	void setFailedMemberHash(int hash) {

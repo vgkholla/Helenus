@@ -500,33 +500,43 @@ class KeyValueStore {
 
 	/*************************EVENT HANDLERS**********************************/
 
-
+	/**********************************JOIN HANDLING FUNCTIONS***************************************/
 	/**
 	 *	[builds commands for keys to be sent when a machine joins]
 	 * @param  errCode 	 [space to store error code]
 	 * @return           [the built commands]
 	 */
-	vector<string> getCommandsForJoin(Message message, int *errCode) {
+	vector<string> getCommandsToTransferOwnedKeysAtJoin(int rangeStart, int rangeEnd, int *errCode) {
 		//*****************REWRITE THIS TO FOLLOW WHAT LEAVE IS DOING. MAKE IT RECURSIVE AND WORK WITH RANGES*****************
 		//*****************UPGRADE THIS FOR MP4. Might need to split it up*****************
-		vector<string> keys;
-		int newNodeHash = message.getNewMemberHash();
-		int myNodeHash = message.getSelfHash();
-		//comparison to see which keys need to go to the new joinee
-		//goes through all of its keys to see if there are any that are lesser than the hash of the new machine (on the ring)
-		for(boost::unordered_map<string, Value>::iterator it = keyValueStore.begin(); it != keyValueStore.end(); it++) {
-			if(getHash(it->first) < newNodeHash || getHash(it->first) >= myNodeHash) {
-			//second condition is for the special case of first machine on the ring
-				keys.push_back(it->first);
+		vector <string>commands;
+		if(rangeStart > rangeEnd) {
+			//if this is the case, then the joinee is the first machine on the ring
+			vector<string> commandsLower = getCommandsToTransferOwnedKeysAtJoin(0, rangeEnd, errCode);
+			vector<string> commandsHigher = getCommandsToTransferOwnedKeysAtJoin(rangeStart, MAX_HASH + 1, errCode);
+			//combine
+			commands = Utility::combineVectors(commandsLower, commandsHigher);
+		} else {
+			//get all the keys owned by this store
+			vector<string> ownedKeys = getOwnedKeys(errCode);
+			//comparison to see which keys need to go to the new joinee
+			//goes through all of its keys to see if there are any that are lesser than the hash of the new machine (on the ring)
+			////pick out keys which are in the range
+			vector<string> selectedKeys;
+			for(int i =0 ; i < ownedKeys.size() ; i++) {
+				string key = ownedKeys[i];
+				int keyHash = getHash(key);
+				if(rangeStart <= keyHash &&  keyHash < rangeEnd) {
+					selectedKeys.push_back(key);
+				}
 			}
-		}
-
-		//get well formed commands for the keys selected, to send to the new machine
-		vector <string>commands = getCommands(INSERT_KEY, keys, errCode);
-		
-		//delete from this store
-		for(int i=0; i < keys.size(); i++) {
-			privateDeleteKey(keys[i], errCode);
+			//get well formed commands for the keys selected, to send to the new machine
+			commands = getCommands(INSERT_KEY, selectedKeys, errCode);
+			
+			//delete from this store
+			for(int i=0; i < selectedKeys.size(); i++) {
+				privateDeleteKey(selectedKeys[i], errCode);
+			}
 		}
 
 		return commands;
@@ -540,7 +550,7 @@ class KeyValueStore {
 	 * @param  errCode 	 [space to store error code]
 	 * @return           [the built commands]
 	 */
-	vector<string> getCommandsToTransferOwnedKeys(int *errCode) {
+	vector<string> getCommandsToTransferOwnedKeysAtLeave(int *errCode) {
 		
 		//get all the keys owned by this store
 		vector<string> ownedKeys = getOwnedKeys(errCode);
@@ -556,16 +566,15 @@ class KeyValueStore {
 		}
 
 		return Utility::combineVectors(forceDeleteCommands, insertCommands);
-
 	}
 
-	vector<string> getCommandsToTransferReplicaKeys(int rangeStart, int rangeEnd, int *errCode) {
+	vector<string> getCommandsToTransferReplicatedKeysAtLeave(int rangeStart, int rangeEnd, int *errCode) {
 		vector<string> commands;
 		if(rangeStart >= 0 && rangeEnd >= 0) {
 			if(rangeStart > rangeEnd) {
 				//if the owner machine of these range of keys is the first machine, split the range into two
-				vector<string> commandsLower = getCommandsToTransferReplicaKeys(0, rangeEnd, errCode);
-				vector<string> commandsHigher = getCommandsToTransferReplicaKeys(rangeStart, MAX_HASH + 1, errCode);
+				vector<string> commandsLower = getCommandsToTransferReplicatedKeysAtLeave(0, rangeEnd, errCode);
+				vector<string> commandsHigher = getCommandsToTransferReplicatedKeysAtLeave(rangeStart, MAX_HASH + 1, errCode);
 				//combine
 				commands = Utility::combineVectors(commandsLower, commandsHigher);
 			} else {

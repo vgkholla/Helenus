@@ -481,19 +481,8 @@ void ConnectionHandler::sendMemberList(vector<string> memberIPs)
         while(coord->hasMessage())
         {
             Message message = coord->popMessage();
-            vector<string> commands;
-            if(message.getReason() == REASON_JOIN)
-            {
-                /* Find the IP of the node to move the keys to */
-                commands = this->getKeyValuePtr()->getCommandsForJoin(message, &errorcode);
-                string ip = this->getMemPtr()->getIPFromHash(message.getNewMemberHash());
-                cout << "Moving my keys to the new node in the system with IP " 
-                     << ip 
-                     << " and hash " << message.getNewMemberHash() 
-                     << endl;
-                for(i = 0; i < commands.size() ; i++) {
-                    Utility::tcpConnectSocket(ip,SERVER_PORT,commands[i]);
-                }
+            if(message.getReason() == REASON_JOIN) {
+              ConnectionHandler::handleJoinEvent(message, this->getKeyValuePtr(), this->getMemPtr());
             } else if (message.getReason() == REASON_FAILURE){
                 //failure and replication handling calls to key value store go here
             } else {
@@ -559,25 +548,50 @@ void ConnectionHandler::sendMemberList(vector<string> memberIPs)
     }
 }
 
-void ConnectionHandler::handleLeaveEvent(ErrorLog *logger, KeyValueStore *kvStore, MembershipList *memList) {
-        //send the keys to another machine if I am leaving the system
-        int errCode = 0;
-        /*vector<string> commands = kvStore->getCommandsForLeave(&errCode);
-        string ip = memList->getIPofSuccessor();
-        if(ip != "") {
-            cout << "Leaving and moving the keys to my successor with IP " << ip << endl;
-            for(int i = 0; i < commands.size() ; i++) {
-                Utility::tcpConnectSocket(ip,SERVER_PORT,commands[i]);
-            }
-        } else {
-            cout<<"No successor to send keys to. Alas! these keys will be lost forever (weeps)"<<endl;
-        }*/
+void ConnectionHandler::handleJoinEvent(Message message, KeyValueStore *kvStore, MembershipList *memList) {
+    /* Find the IP of the node to move the keys to */
+    int errCode = 0;
+    
+    int newMachineOwnedRangeStart = message.getNewMachineOwnedRangeStart();
+    cout<<"New machine owned range start: " << newMachineOwnedRangeStart<<endl;
+    
+    int newMachineOwnedRangeEnd = message.getNewMachineOwnedRangeEnd();
+    cout<<"New machine owned range end: " << newMachineOwnedRangeEnd<<endl;
+    
+    vector<string> commands = kvStore->getCommandsToTransferOwnedKeysAtJoin(newMachineOwnedRangeStart, newMachineOwnedRangeEnd, &errCode);
 
-        string msg = "Elvis has left the building";
-        errCode = 0;
-        logger->logDebug(MEMBER_LEFT, msg , &errCode);
-        //cout << "Clean up Time expired, Exiting now " << endl;
-        exit(0);
+    string ip = memList->getIPFromHash(message.getNewMemberHash());
+    cout << "Moving some of my keys to the new node in the system with IP " 
+         << ip 
+         << " and hash " << message.getNewMemberHash() 
+         << endl;
+    
+    for(int i = 0; i < commands.size() ; i++) {
+        Utility::tcpConnectSocket(ip, SERVER_PORT,commands[i]);
+    }
+
+    cout<<"Moved "<<commands.size()<<" owned key(s)"<<endl;
+}
+
+void ConnectionHandler::handleLeaveEvent(ErrorLog *logger, KeyValueStore *kvStore, MembershipList *memList) {
+    //send the keys to another machine if I am leaving the system
+    int errCode = 0;
+    /*vector<string> commands = kvStore->getCommandsForLeave(&errCode);
+    string ip = memList->getIPofSuccessor();
+    if(ip != "") {
+        cout << "Leaving and moving the keys to my successor with IP " << ip << endl;
+        for(int i = 0; i < commands.size() ; i++) {
+            Utility::tcpConnectSocket(ip,SERVER_PORT,commands[i]);
+        }
+    } else {
+        cout<<"No successor to send keys to. Alas! these keys will be lost forever (weeps)"<<endl;
+    }*/
+
+    string msg = "Elvis has left the building";
+    errCode = 0;
+    logger->logDebug(MEMBER_LEFT, msg , &errCode);
+    //cout << "Clean up Time expired, Exiting now " << endl;
+    exit(0);
 }
 
 void ConnectionHandler::sendLeaveMsg(int signal)
