@@ -273,7 +273,7 @@ class KeyValueStore {
 	string buildCommand(string operation, string key, string value) {
 		//builds a well formed command of the form operation(key,value)
 		string command = operation + "(" + key;
-		if(operation == UPDATE_KEY || operation == INSERT_KEY) {
+		if(operation == UPDATE_KEY || operation == INSERT_KEY || operation == FORCE_UPDATE_KEY || operation == FORCE_INSERT_KEY) {
 			command += ",";
 			command += value;
 		}

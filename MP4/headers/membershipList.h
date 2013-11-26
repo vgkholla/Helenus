@@ -475,14 +475,13 @@ class MembershipList {
     		//build the message
         	Message message;
         	message.setReason(REASON_JOIN);
-        	message.setSelfHash(selfHash);
         	message.setNewMemberHash(newNodeHash);
 
         	int newMachineOwnedRangeStart = -1;
         	if(keyToIPMap.size() == 2) {//special case of only two machines. Each machine is the predecessor and successor of each other
         		newMachineOwnedRangeStart = selfHash;
         	} else {//in this case the predecessor of the new machine is the second predecessor of this machine
-        		newMachineOwnedRangeStart = getHashOfSecondPredecessor(selfHash);
+        		newMachineOwnedRangeStart = getHashOfSecondPredecessor();
         	}
         	message.setNewMachineOwnedRangeStart(newMachineOwnedRangeStart);
         	
@@ -552,10 +551,6 @@ class MembershipList {
 
     int isPredecessor(int nodeHash) {
     	return nodeHash == getHashAtDistance(-1);
-    }
-
-    int getHashOfSecondPredecessor(int nodeHash) {
-    	return getHashAtDistance(-2);
     }
 
 	public:
@@ -766,12 +761,32 @@ class MembershipList {
     	return getIPAtDistance(1);
     }
 
+    string getIPofSecondSuccessor() {
+    	return getIPAtDistance(2);
+    }
+
     string getIPofFirstReplica() {
-    	return getIPAtDistance(1);
+    	return getIPofSuccessor();
     }
 
     string getIPofSecondReplica() {
-    	return getIPAtDistance(2);
+    	return getIPofSecondSuccessor();
+    }
+
+    int getHashOfFirstPredecessor() {
+    	return getHashAtDistance(-1);
+    }
+    
+    int getHashOfSecondPredecessor() {
+    	return getHashAtDistance(-2);
+    }
+    
+    int getHashOfThirdPredecessor() {
+    	return getHashAtDistance(-3);
+    }
+
+    int getSelfHash() {
+    	return selfHash;
     }
 
     /*** leave helper functions ***/

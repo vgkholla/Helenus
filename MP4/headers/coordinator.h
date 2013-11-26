@@ -15,7 +15,6 @@ class Message {
 	//a class for passing messages between the membership list and the key value store
 
 	string reason; //the reason for transfer. can be join or failure
-	int selfHash; //Node's hash
 
 	//for join
 	int newMemberHash;//if reason is join, the hash of new member
@@ -27,7 +26,6 @@ class Message {
 	public:
 	Message() {
 		reason = "";
-		selfHash = -1;
 
 		newMemberHash = -1;
 		newMachineOwnedRangeStart = -1;
@@ -38,10 +36,6 @@ class Message {
 	//getters
 	string getReason() {
 		return reason;
-	}
-
-	int getSelfHash() {
-		return selfHash;
 	}
 
 	int getNewMemberHash() {
@@ -63,10 +57,6 @@ class Message {
 	//setters
 	void setReason(string reasonString) {
 		reason = reasonString;
-	}
-
-	void setSelfHash(int hash) {
-		selfHash = hash;
 	}
 
 	void setNewMemberHash(int hash) {
