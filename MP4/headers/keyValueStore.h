@@ -22,6 +22,8 @@
 #define KEY_REPLICATED 0
 #define KEY_OWNED 1
 
+#define MAX_HASH 255
+
 using namespace std;
 
 class Value {
@@ -505,6 +507,7 @@ class KeyValueStore {
 	 * @return           [the built commands]
 	 */
 	vector<string> getCommandsForJoin(Message message, int *errCode) {
+		//*****************REWRITE THIS TO FOLLOW WHAT LEAVE IS DOING. MAKE IT RECURSIVE AND WORK WITH RANGES*****************
 		//*****************UPGRADE THIS FOR MP4. Might need to split it up*****************
 		vector<string> keys;
 		int newNodeHash = message.getNewMemberHash();
@@ -512,7 +515,7 @@ class KeyValueStore {
 		//comparison to see which keys need to go to the new joinee
 		//goes through all of its keys to see if there are any that are lesser than the hash of the new machine (on the ring)
 		for(boost::unordered_map<string, Value>::iterator it = keyValueStore.begin(); it != keyValueStore.end(); it++) {
-			if(getHash(it->first) <= newNodeHash || getHash(it->first) > myNodeHash) {
+			if(getHash(it->first) < newNodeHash || getHash(it->first) >= myNodeHash) {
 			//second condition is for the special case of first machine on the ring
 				keys.push_back(it->first);
 			}
@@ -552,38 +555,42 @@ class KeyValueStore {
 			privateDeleteKey(ownedKeys[i], errCode);
 		}
 
-		vector<string> commands;
-		commands.reserve(forceDeleteCommands.size() + insertCommands.size());
-		commands.insert(commands.end(), forceDeleteCommands.begin(), forceDeleteCommands.end());
-		commands.insert(commands.end(), insertCommands.begin(), insertCommands.end());
-
-		return commands;
+		return Utility::combineVectors(forceDeleteCommands, insertCommands);
 
 	}
 
-
-	vector<string> getCommandsToTransferPrimaryReplicaKeys(int firstPredecessorHash, int *errCode) {
-		//*****************UPGRADE THIS FOR MP4. Might need to split it up*****************
-		
+	vector<string> getCommandsToTransferReplicaKeys(int rangeStart, int rangeEnd, int *errCode) {
 		vector<string> commands;
+		if(rangeStart >= 0 && rangeEnd >= 0) {
+			if(rangeStart > rangeEnd) {
+				//if the owner machine of these range of keys is the first machine, split the range into two
+				vector<string> commandsLower = getCommandsToTransferReplicaKeys(0, rangeEnd, errCode);
+				vector<string> commandsHigher = getCommandsToTransferReplicaKeys(rangeStart, MAX_HASH + 1, errCode);
+				//combine
+				commands = Utility::combineVectors(commandsLower, commandsHigher);
+			} else {
+				//get all the keys for which this store is replica
+				vector<string> allReplicatedKeys = getReplicatedKeys(errCode);
 
-		//get all the keys for which this store is replica
-		vector<string> allReplicatedKeys = getReplicatedKeys(errCode);
-	
-		//pick out keys for which this store is primary replica
-		vector<string> selectedReplicatedKeys;
-		if(firstPredecessorHash < 0) {
-			return commands;
-		}
-		for(int i =0 ; i < allReplicatedKeys.size() ; i++) {
-			if(getHash(allReplicatedKeys[i]) < firstPredecessorHash) {
-				selectedReplicatedKeys.push_back(allReplicatedKeys[i]);
+				//pick out keys which are in the range
+				vector<string> selectedReplicatedKeys;
+				for(int i =0 ; i < allReplicatedKeys.size() ; i++) {
+					string key = allReplicatedKeys[i];
+					int keyHash = getHash(key);
+					if(rangeStart <= keyHash &&  keyHash < rangeEnd) {
+						selectedReplicatedKeys.push_back(key);
+					}
+				}
+
+				commands = getCommands(FORCE_INSERT_KEY, selectedReplicatedKeys, errCode);
+				//delete from this store
+				for(int i=0; i < selectedReplicatedKeys.size(); i++) {
+					privateDeleteKey(selectedReplicatedKeys[i], errCode);
+				}
 			}
 		}
 
-		commands = getCommands(FORCE_INSERT_KEY, selectedReplicatedKeys, errCode);
 		return commands;
-
 	} 	
 
 	//******************ADD ONE FOR FAILURE HERE**********************************

@@ -746,10 +746,6 @@ class MembershipList {
 
     /*** position public interfaces **/
 
-    string getIPofSecondPredecessor() {
-    	return getIPAtDistance(-2);
-    }
-   
     string getIPofFirstPredecessor() {
     	return getIPAtDistance(-1);
     }

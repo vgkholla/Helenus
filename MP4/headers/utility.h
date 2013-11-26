@@ -11,6 +11,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <iostream>
+#include <vector>
 
 using namespace std;
 
@@ -56,6 +57,21 @@ class Utility {
 
 		return i % 2;
 	}
+
+    /**
+     *  [combines two given vectors]
+     * @param  vector1 [the first vector]
+     * @param  vector2 [the second vector]
+     * @return     [the combined vector]
+     */
+    static vector <string> combineVectors(vector<string> vector1, vector<string> vector2) {
+        vector<string> combinedVector;
+        combinedVector.reserve(vector1.size() + vector2.size());
+        combinedVector.insert(combinedVector.end(), vector1.begin(), vector1.end());
+        combinedVector.insert(combinedVector.end(), vector2.begin(), vector2.end());
+
+        return combinedVector;
+    }
 
     static int udpSocket(string address, int port) {
 

@@ -214,13 +214,13 @@ void* ConnectionHandler::updateKeyValue(void* lp)
     string received = buffer;
     /* Parse and find out the command type */
     KeyValueStoreCommand command = CommandLineTools::parseKeyValueStoreCmd(received);
+    /* Find the key */
+    keyToInsert = command.getKey();
+    /* Calculate the key hash */
+    hash = Hash::calculateKeyHash(keyToInsert);
     
     string ip;
     if(command.getOperation() != SHOW_KVSTORE && command.isNormalOperation()) {
-        /* Find the key */
-        keyToInsert = command.getKey();
-        /* Calculate the key hash */
-        hash = Hash::calculateKeyHash(keyToInsert);
         /* Find the IP of the node where the key value pair should reside */
         ip = ptr1->getMemPtr()->getIPToSendToFromKeyHash(hash);
     } else {
@@ -234,7 +234,7 @@ void* ConnectionHandler::updateKeyValue(void* lp)
         << ". Value is "
         <<command.getValue()
         << ". Key Hash is "
-        << Hash::calculateKeyHash(keyToInsert)
+        << hash
         <<endl;
 
 
