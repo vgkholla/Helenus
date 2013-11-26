@@ -503,25 +503,8 @@ void ConnectionHandler::sendMemberList(vector<string> memberIPs)
         }
         /* If time exceeds the time to cleanup exit the process */
     	if(leave && 
-           ((time(0) - leaveTimeStamp) > this->getMemPtr()->timeToCleanupInSeconds()))
-    	{
-            //send the keys to another machine if I am leaving the system
-            vector<string> commands = this->getKeyValuePtr()->getCommandsForLeave(&errorcode);
-            string ip = this->getMemPtr()->getIPofSuccessor();
-            if(ip != "") {
-                cout << "Leaving and moving the keys to my successor with IP " << ip << endl;
-                for(i = 0; i < commands.size() ; i++) {
-                    Utility::tcpConnectSocket(ip,SERVER_PORT,commands[i]);
-                }
-            } else {
-                cout<<"No successor to send keys to. Alas! these keys will be lost forever (weeps)"<<endl;
-            }
-
-            string msg = "Elvis has left the building";
-            int errCode = 0;
-            logger->logDebug(MEMBER_LEFT, msg , &errCode);
-            //cout << "Clean up Time expired, Exiting now " << endl;
-            exit(0);
+           ((time(0) - leaveTimeStamp) > this->getMemPtr()->timeToCleanupInSeconds())) {
+           ConnectionHandler::handleLeaveEvent(logger, this->getKeyValuePtr(), this->getMemPtr());
     	}
 
         try
@@ -574,6 +557,27 @@ void ConnectionHandler::sendMemberList(vector<string> memberIPs)
             logger->logError(SERIALIZATION_ERROR, msg , &errCode);
         }
     }
+}
+
+void ConnectionHandler::handleLeaveEvent(ErrorLog *logger, KeyValueStore *kvStore, MembershipList *memList) {
+        //send the keys to another machine if I am leaving the system
+        int errCode = 0;
+        /*vector<string> commands = kvStore->getCommandsForLeave(&errCode);
+        string ip = memList->getIPofSuccessor();
+        if(ip != "") {
+            cout << "Leaving and moving the keys to my successor with IP " << ip << endl;
+            for(int i = 0; i < commands.size() ; i++) {
+                Utility::tcpConnectSocket(ip,SERVER_PORT,commands[i]);
+            }
+        } else {
+            cout<<"No successor to send keys to. Alas! these keys will be lost forever (weeps)"<<endl;
+        }*/
+
+        string msg = "Elvis has left the building";
+        errCode = 0;
+        logger->logDebug(MEMBER_LEFT, msg , &errCode);
+        //cout << "Clean up Time expired, Exiting now " << endl;
+        exit(0);
 }
 
 void ConnectionHandler::sendLeaveMsg(int signal)

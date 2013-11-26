@@ -46,7 +46,7 @@ class MembershipDetails {
         ar & failed;
         ar & leaving;
         ar & failureTimestamp;
-        ar & nodeID;
+        ar & nodeHash;
     }
 
 	public:
@@ -64,8 +64,9 @@ class MembershipDetails {
 
 	//timestamp when suspected of failure
 	int failureTimestamp;
-        //Hashed value of the node
-        int nodeID;
+    
+    //Hashed value of the node
+    int nodeHash;
 
 	MembershipDetails() {
 		id = "";
@@ -76,7 +77,7 @@ class MembershipDetails {
 		leaving = 0;
 
 		failureTimestamp=0;
-        nodeID = 0;
+        nodeHash = 0;
 	}
 };
 
@@ -129,14 +130,14 @@ class MembershipList {
 	 * @param entry [the entry to be removed]
 	 */
 	void removeFromList(MembershipDetails entry) {
-		if(keyToIPMap.find(entry.nodeID) != keyToIPMap.end()) {
-			keyToIPMap.erase(entry.nodeID); 
+		if(keyToIPMap.find(entry.nodeHash) != keyToIPMap.end()) {
+			keyToIPMap.erase(entry.nodeHash); 
 		}
 		//lookup by network id and delete
 		for(int i =0 ; i < memList.size(); i++ ) {
 			if(entry.id == memList[i].id) {
 				removeFromList(i);
-                keyToIPMap.erase(entry.nodeID);
+                keyToIPMap.erase(entry.nodeHash);
 				break;
 			}
 		}
@@ -187,8 +188,8 @@ class MembershipList {
 			localEntry->failed = 0;//reset failure if applicable
 			localEntry->leaving = remoteEntry.leaving;//does the guy want to leave now?
 			if(remoteEntry.leaving == 1) {
-				if(keyToIPMap.find(remoteEntry.nodeID) != keyToIPMap.end()) {
-					keyToIPMap.erase(remoteEntry.nodeID); 
+				if(keyToIPMap.find(remoteEntry.nodeHash) != keyToIPMap.end()) {
+					keyToIPMap.erase(remoteEntry.nodeHash); 
 				}
 			}
 		}
@@ -464,47 +465,85 @@ class MembershipList {
 
 	}
 
-	/* Check if the distance between new node and me is one */ 
-    void checkAndTransferKeys(int nodeHash) {
-    	map<int,string>::iterator itLow, itUp;
-
-        itLow = keyToIPMap.find(nodeHash);
-        string ip = itLow->second;
-        itUp = keyToIPMap.find(selfHash);
-
-        int transferRequired = 0;
-        /* there should be more than one node */
-        if(keyToIPMap.size() > 1) {
-          
-            if(itLow->first < itUp->first) {
-                int distance = std::distance(itLow,itUp);
-                if(distance == 1) {
-                    cout << "New node joined with node hash " 
-                         << nodeHash 
-                         << "and distance between the new hash and my own hash " 
-                         << selfHash 
-                         << " is " 
-                         << distance 
-                         << endl;
-            	    transferRequired = 1;
-                }
-            }
-            else if(itUp->first == keyToIPMap.begin()->first && itLow->first == keyToIPMap.rbegin()->first) {
-                    cout << "New node joined with node hash " << itLow->first << " added at the end of the ring " << endl;
-                    transferRequired = 1;
-            }
-        }
-
-        if(transferRequired == 1) {
-        	//build the message
+	/**
+	 * [checks if the newly joined node is a predecessor. If it is, a message has to pushed to the coordinator]
+	 * @param newNodeHash [the hash of the new node]
+	 */
+    void handleJoin(int newNodeHash) {
+    	//there should be more than one machine and the new machine should be the predecessor
+    	if(keyToIPMap.size() > 1 && isPredecessor(newNodeHash)) {
+    		//build the message
         	Message message;
         	message.setReason(REASON_JOIN);
         	message.setSelfHash(selfHash);
-        	message.setNewMemberHash(nodeHash);
+        	message.setNewMemberHash(newNodeHash);
+        	
         	//store it in the coordinator
         	coordinator->pushMessage(message);
-        }
-			
+    	}	
+    }
+
+    /** Postion checking functions **/
+
+    map<int,string>::iterator getMachineAtDistance(int distance) {
+    	map<int,string>::iterator requiredMachine = keyToIPMap.end();
+   		
+   		int increment = 1;
+    	if(distance < 0) {
+    		distance = -distance;
+    		increment = 0;
+    	}
+
+    	if(distance + 1 <= keyToIPMap.size()) {
+	    	map<int,string>::iterator selfEntry = keyToIPMap.find(selfHash);
+	    	requiredMachine = selfEntry;
+	    	while(distance > 0) {
+	    		if(increment) {
+	    			requiredMachine++;
+		    		if(requiredMachine == keyToIPMap.end()) {
+		    			requiredMachine = keyToIPMap.begin();
+		    		}
+	    		} else {
+	    			if(requiredMachine == keyToIPMap.begin()) {
+	    				requiredMachine = keyToIPMap.end();
+	    			}
+	    			requiredMachine--;
+	    		}
+	    		distance--;
+	    	}
+	    }
+
+    	return requiredMachine;
+    }
+
+    string getIPAtDistance(int distance) {
+    	string ip = "";
+   		map<int,string>::iterator requiredMachine = getMachineAtDistance(distance);
+   		if(requiredMachine != keyToIPMap.end()) {
+   			ip = requiredMachine->second;
+   		}
+   		return ip;
+    }
+
+    int getHashAtDistance(int distance) {
+   		int hash = -1;
+   		map<int,string>::iterator requiredMachine = getMachineAtDistance(distance);
+   		if(requiredMachine != keyToIPMap.end()) {
+   			hash = requiredMachine->first;
+   		}
+   		return hash;
+    }
+
+    int isFirstReplica(int nodeHash) {
+    	return nodeHash == getHashAtDistance(1);
+    }
+
+	int isSecondReplica(int nodeHash) {
+    	return nodeHash == getHashAtDistance(2);
+    }    
+
+    int isPredecessor(int nodeHash) {
+    	return nodeHash == getHashAtDistance(-1);
     }
 
 	public:
@@ -524,9 +563,9 @@ class MembershipList {
 		MembershipDetails entry;
 		entry.id = networkID;
 		entry.localTimestamp = time(0);
-		entry.nodeID = Hash::calculateNodeHash(networkID);
+		entry.nodeHash = Hash::calculateNodeHash(networkID);
 		
-		selfHash = entry.nodeID;
+		selfHash = entry.nodeHash;
         
 		addToList(entry);
 
@@ -547,7 +586,7 @@ class MembershipList {
 	 */
 	void printMemList() {
 		for(int i =0 ; i < memList.size(); i++ ) {
-			cout<<"ID: "<< memList[i].id <<" Heartbeat: "<< memList[i].heartbeat<<" Timestamp: "<<memList[i].localTimestamp<<" Failed: "<<memList[i].failed<<" Leaving: "<<memList[i].leaving<<" Failure Timestamp: "<<memList[i].failureTimestamp<<" Node Hash ID: "<<memList[i].nodeID<<endl;
+			cout<<"ID: "<< memList[i].id <<" Heartbeat: "<< memList[i].heartbeat<<" Timestamp: "<<memList[i].localTimestamp<<" Failed: "<<memList[i].failed<<" Leaving: "<<memList[i].leaving<<" Failure Timestamp: "<<memList[i].failureTimestamp<<" Node Hash ID: "<<memList[i].nodeHash<<endl;
 		}
 	}
 
@@ -557,9 +596,12 @@ class MembershipList {
 	 */
 	void addToList(MembershipDetails entry) {
 		memList.push_back(entry);
-        keyToIPMap.insert(std::pair<int,string>(entry.nodeID,getIPFromNetworkID(entry.id))); 
+        keyToIPMap.insert(std::pair<int,string>(entry.nodeHash,getIPFromNetworkID(entry.id))); 
         printkeyToIPMap();
-        checkAndTransferKeys(entry.nodeID);
+        
+        if(keyToIPMap.size() > 1) {
+        	handleJoin(entry.nodeHash);
+    	}
 	}
 
 	/**
@@ -701,6 +743,17 @@ class MembershipList {
         return keyToIPMap.find(key)->second;
     }
 
+
+    /*** position public interfaces **/
+
+    string getIPofSecondPredecessor() {
+    	return getIPAtDistance(-2);
+    }
+   
+    string getIPofFirstPredecessor() {
+    	return getIPAtDistance(-1);
+    }
+
     string getIPofSuccessor() {
     	return getIPAtDistance(1);
     }
@@ -713,22 +766,8 @@ class MembershipList {
     	return getIPAtDistance(2);
     }
 
-    string getIPAtDistance(int distance) {
-    	if(distance + 1 > keyToIPMap.size()) {
-    		return "";
-    	}
-    	map<int,string>::iterator selfEntry = keyToIPMap.find(selfHash);
-    	map<int,string>::iterator requiredMachine = selfEntry;
-    	while(distance > 0) {
-    		requiredMachine++;
-    		if(requiredMachine == keyToIPMap.end()) {
-    			requiredMachine = keyToIPMap.begin();
-    		}
-    		distance--;
-    	}
 
-    	return requiredMachine->second;
-    }
+    /*** position functions end****/
 
 	/**
 	 * [used by a machine which wants to volunatarily leave the group]

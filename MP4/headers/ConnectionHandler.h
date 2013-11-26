@@ -129,6 +129,8 @@ namespace P2P
             static string sendForceOperations(string command, MembershipList *memList, int *replicaExists, int *consistentReplicas);
             static string performOperationLocally(KeyValueStoreCommand command, KeyValueStore *kvStore, MembershipList *memList);
   
+            /**event handlers*/
+            static void handleLeaveEvent(ErrorLog *logger, KeyValueStore *kvStore, MembershipList *memList);
             
             /** Handle File Update Membership List */
             static void* updateMembershipList(void *lp);

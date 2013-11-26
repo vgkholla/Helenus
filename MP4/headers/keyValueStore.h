@@ -529,21 +529,61 @@ class KeyValueStore {
 		return commands;
 	} 
 
+
+	/**********************************LEAVE HANDLING FUNCTIONS***************************************/
+	
 	/**
 	 *	[builds commands for keys to be sent when this machine leaves]
 	 * @param  errCode 	 [space to store error code]
 	 * @return           [the built commands]
 	 */
-	vector<string> getCommandsForLeave(int *errCode) {
-		//*****************UPGRADE THIS FOR MP4. Might need to split it up*****************
-		vector<string> keys;
-		//get all the keys in this store
-		for(boost::unordered_map<string, Value>::iterator it = keyValueStore.begin(); it != keyValueStore.end(); it++) {
-			keys.push_back(it->first);
+	vector<string> getCommandsToTransferOwnedKeys(int *errCode) {
+		
+		//get all the keys owned by this store
+		vector<string> ownedKeys = getOwnedKeys(errCode);
+	
+		//create a force delete for each key and an insert for each key
+		//This will delete the replicated keys in the successor and insert is as owned keys
+		vector<string> forceDeleteCommands = getCommands(FORCE_DELETE_KEY, ownedKeys, errCode);
+		vector<string> insertCommands = getCommands(INSERT_KEY, ownedKeys, errCode);
+
+		//delete from this store
+		for(int i=0; i < ownedKeys.size(); i++) {
+			privateDeleteKey(ownedKeys[i], errCode);
 		}
 
-		//create well formed commands for each key, to be sent to successor machine
-		return getCommands(INSERT_KEY, keys, errCode);
+		vector<string> commands;
+		commands.reserve(forceDeleteCommands.size() + insertCommands.size());
+		commands.insert(commands.end(), forceDeleteCommands.begin(), forceDeleteCommands.end());
+		commands.insert(commands.end(), insertCommands.begin(), insertCommands.end());
+
+		return commands;
+
+	}
+
+
+	vector<string> getCommandsToTransferPrimaryReplicaKeys(int firstPredecessorHash, int *errCode) {
+		//*****************UPGRADE THIS FOR MP4. Might need to split it up*****************
+		
+		vector<string> commands;
+
+		//get all the keys for which this store is replica
+		vector<string> allReplicatedKeys = getReplicatedKeys(errCode);
+	
+		//pick out keys for which this store is primary replica
+		vector<string> selectedReplicatedKeys;
+		if(firstPredecessorHash < 0) {
+			return commands;
+		}
+		for(int i =0 ; i < allReplicatedKeys.size() ; i++) {
+			if(getHash(allReplicatedKeys[i]) < firstPredecessorHash) {
+				selectedReplicatedKeys.push_back(allReplicatedKeys[i]);
+			}
+		}
+
+		commands = getCommands(FORCE_INSERT_KEY, selectedReplicatedKeys, errCode);
+		return commands;
+
 	} 	
 
 	//******************ADD ONE FOR FAILURE HERE**********************************
