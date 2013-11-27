@@ -506,14 +506,12 @@ class KeyValueStore {
 	 * @param  errCode 	 [space to store error code]
 	 * @return           [the built commands]
 	 */
-	vector<string> getCommandsToTransferOwnedKeysAtJoin(int rangeStart, int rangeEnd, int *errCode) {
-		//*****************REWRITE THIS TO FOLLOW WHAT LEAVE IS DOING. MAKE IT RECURSIVE AND WORK WITH RANGES*****************
-		//*****************UPGRADE THIS FOR MP4. Might need to split it up*****************
+	vector<string> getCommandsToTransferOwnedKeysAtJoin(int rangeStart, int rangeEnd, vector<string> *deleteCommands, int *errCode) {
 		vector <string>commands;
 		if(rangeStart > rangeEnd) {
 			//if this is the case, then the joinee is the first machine on the ring
-			vector<string> commandsLower = getCommandsToTransferOwnedKeysAtJoin(0, rangeEnd, errCode);
-			vector<string> commandsHigher = getCommandsToTransferOwnedKeysAtJoin(rangeStart, MAX_HASH + 1, errCode);
+			vector<string> commandsLower = getCommandsToTransferOwnedKeysAtJoin(0, rangeEnd, deleteCommands, errCode);
+			vector<string> commandsHigher = getCommandsToTransferOwnedKeysAtJoin(rangeStart, MAX_HASH + 1, deleteCommands, errCode);
 			//combine
 			commands = Utility::combineVectors(commandsLower, commandsHigher);
 		} else {
@@ -532,6 +530,8 @@ class KeyValueStore {
 			}
 			//get well formed commands for the keys selected, to send to the new machine
 			commands = getCommands(INSERT_KEY, selectedKeys, errCode);
+			//get fdelete commands to send to second replica for these keys
+			*deleteCommands = getCommands(FORCE_DELETE_KEY, selectedKeys, errCode);
 			
 			//delete from this store
 			for(int i=0; i < selectedKeys.size(); i++) {
@@ -541,6 +541,42 @@ class KeyValueStore {
 
 		return commands;
 	} 
+
+	int deleteReplicatedKeys(int deleteRangeStart, int deleteRangeEnd, int *errCode) {
+		int deleted = 0;
+		if(deleteRangeStart >= 0 && deleteRangeEnd >= 0) {
+			if(deleteRangeStart > deleteRangeEnd) {
+				//if the owner machine of these range of keys is the first machine, split the range into two
+				deleted += deleteReplicatedKeys(0, deleteRangeEnd, errCode);
+				deleted += deleteReplicatedKeys(deleteRangeStart, MAX_HASH + 1, errCode);
+			} else {
+				//get all the keys for which this store is replica
+				vector<string> allReplicatedKeys = getReplicatedKeys(errCode);
+				
+				//pick out keys which are in the delete range and delete them (because this machine no longer needs to replicate them)
+				for(int i =0 ; i < allReplicatedKeys.size() ; i++) {
+					string key = allReplicatedKeys[i];
+					int keyHash = getHash(key);
+					if(deleteRangeStart <= keyHash &&  keyHash < deleteRangeEnd) {
+						deleted++;
+						privateDeleteKey(key, errCode);
+					}
+				}
+			}
+		}
+
+		return deleted;
+	}
+
+	vector<string> getCommandsToReplicateOwnedKeysAtJoin(int *errCode) {
+		//get all the keys owned by this store
+		vector<string> ownedKeys = getOwnedKeys(errCode);
+	
+		//create force inserts for replication
+		vector<string> insertCommands = getCommands(FORCE_INSERT_KEY, ownedKeys, errCode);
+
+		return insertCommands;
+	}
 
 
 	/**********************************LEAVE HANDLING FUNCTIONS***************************************/
@@ -591,7 +627,10 @@ class KeyValueStore {
 					}
 				}
 
-				commands = getCommands(FORCE_INSERT_KEY, selectedReplicatedKeys, errCode);
+				vector<string> forceDeleteCommands = getCommands(FORCE_DELETE_KEY, selectedReplicatedKeys, errCode);
+				vector<string> forceInsertCommands = getCommands(FORCE_INSERT_KEY, selectedReplicatedKeys, errCode);
+
+				commands = Utility::combineVectors(forceDeleteCommands, forceInsertCommands);
 				//delete from this store
 				for(int i=0; i < selectedReplicatedKeys.size(); i++) {
 					privateDeleteKey(selectedReplicatedKeys[i], errCode);

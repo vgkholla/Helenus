@@ -9,16 +9,23 @@
 #define REASON_JOIN "join"
 #define REASON_FAILURE "failure"
 
+//roles
+#define ROLE_SUCCESSOR "successor"
+#define ROLE_PREDECESSOR "predecessor"
+
 using namespace std;
 
 class Message {
 	//a class for passing messages between the membership list and the key value store
 
 	string reason; //the reason for transfer. can be join or failure
+	string role; //what is the relation of the event to this machine
 
 	//for join
 	int newMemberHash;//if reason is join, the hash of new member
 	int newMachineOwnedRangeStart; //the start of the owned range for the new machine
+	int deleteKeysRangeStart;//the start of the range for which replicated keys in this machine have to be deleted
+	int deleteKeysRangeEnd;//the end of the range for which replicated keys in this machine have to be deleted
 	
 	//for failure
 	int failedMemberHash;//if reason is failure, the hash of the machine that failed
@@ -34,10 +41,16 @@ class Message {
 	}
 
 	//getters
+	//general
 	string getReason() {
 		return reason;
 	}
 
+	string getRole() {
+		return role;
+	}
+
+	//join
 	int getNewMemberHash() {
 		return newMemberHash;
 	}
@@ -50,15 +63,30 @@ class Message {
 		return getNewMemberHash();
 	}
 
+	int getDeleteKeysRangeStart() {
+		return deleteKeysRangeStart;
+	}
+
+	int getDeleteKeysRangeEnd() {
+		return deleteKeysRangeEnd;
+	}
+
+	//fail
 	int getFailedMemberHash() {
 		return failedMemberHash;
 	}
 
 	//setters
+	//general
 	void setReason(string reasonString) {
 		reason = reasonString;
 	}
 
+	void setRole(string roleString) {
+		role = roleString;
+	}
+
+	//join
 	void setNewMemberHash(int hash) {
 		newMemberHash = hash;
 	}
@@ -67,6 +95,15 @@ class Message {
 		newMachineOwnedRangeStart = hash;
 	}
 
+	void setDeleteKeysRangeStart(int hash) {
+		deleteKeysRangeStart = hash;
+	}
+
+	void setDeleteKeysRangeEnd(int hash) {
+		deleteKeysRangeEnd = hash;
+	}
+
+	//failed
 	void setFailedMemberHash(int hash) {
 		failedMemberHash = hash;
 	}
@@ -103,8 +140,8 @@ class Coordinator {
 
 	Message popMessage() {
 		pthread_mutex_lock (&mutexsum);
-		Message message = messages.back();
-		messages.pop_back();
+		Message message = messages.front();
+		messages.erase(messages.begin());
 		pthread_mutex_unlock (&mutexsum);
 		return message;
 	}

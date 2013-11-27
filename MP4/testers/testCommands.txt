@@ -1,9 +1,9 @@
-insert(1000,a)
-insert(2000,b)
-insert(3000,c)
-insert(4000,d)
-insert(5000,e)
-insert(6000,f)
+insert(1000,a)	
+insert(2000,b)	
+insert(3000,c)	
+insert(4000,d)	
+insert(5000,e)	
+insert(6000,f)	
 
 update(1000,z)
 update(2000,y)
@@ -25,3 +25,15 @@ delete(3000)
 delete(4000)
 delete(5000)
 delete(6000)
+
+101
+171
+14
+197
+56
+167
+
+1 78
+2 202
+4 214
+3 224

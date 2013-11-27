@@ -188,9 +188,7 @@ class MembershipList {
 			localEntry->failed = 0;//reset failure if applicable
 			localEntry->leaving = remoteEntry.leaving;//does the guy want to leave now?
 			if(remoteEntry.leaving == 1) {
-				if(keyToIPMap.find(remoteEntry.nodeHash) != keyToIPMap.end()) {
-					keyToIPMap.erase(remoteEntry.nodeHash); 
-				}
+				handleLeave(remoteEntry.nodeHash);
 			}
 		}
 	}
@@ -465,29 +463,69 @@ class MembershipList {
 
 	}
 
+	int isKeyToIPMapGreaterThanSize(int size) {
+		return keyToIPMap.size() > size;
+	}
+
 	/**
 	 * [checks if the newly joined node is a predecessor. If it is, a message has to pushed to the coordinator]
 	 * @param newNodeHash [the hash of the new node]
 	 */
     void handleJoin(int newNodeHash) {
     	//there should be more than one machine and the new machine should be the predecessor
-    	if(keyToIPMap.size() > 1 && isPredecessor(newNodeHash)) {
-    		//build the message
-        	Message message;
-        	message.setReason(REASON_JOIN);
-        	message.setNewMemberHash(newNodeHash);
+    	if(keyToIPMap.size() > 1) {
+    		if(isPredecessor(newNodeHash)) {//this machine is the first successor
+	    		//start building the message
+	    		Message message;
+	        	message.setReason(REASON_JOIN);
+	        	message.setNewMemberHash(newNodeHash);
 
-        	int newMachineOwnedRangeStart = -1;
-        	if(keyToIPMap.size() == 2) {//special case of only two machines. Each machine is the predecessor and successor of each other
-        		newMachineOwnedRangeStart = selfHash;
-        	} else {//in this case the predecessor of the new machine is the second predecessor of this machine
-        		newMachineOwnedRangeStart = getHashOfSecondPredecessor();
-        	}
-        	message.setNewMachineOwnedRangeStart(newMachineOwnedRangeStart);
-        	
-        	//store it in the coordinator
-        	coordinator->pushMessage(message);
-    	}	
+	    		//set the role
+	    		message.setRole(ROLE_SUCCESSOR);
+	        	int newMachineOwnedRangeStart = -1;
+	        	
+	        	int deleteKeysRangeStart;
+	        	if(keyToIPMap.size() == 4) {
+	        		deleteKeysRangeStart = selfHash;
+	        	} else {
+	        		deleteKeysRangeStart = getHashOfFourthPredecessor();
+	        	}
+
+	        	int deleteKeysRangeEnd = getHashOfThirdPredecessor();
+
+	        	if(keyToIPMap.size() == 2) {//special case of only two machines. Each machine is the predecessor and successor of each other
+	        		newMachineOwnedRangeStart = selfHash;
+	        	} else {//in this case the predecessor of the new machine is the second predecessor of this machine
+	        		newMachineOwnedRangeStart = getHashOfSecondPredecessor();
+	        	}
+	        	message.setNewMachineOwnedRangeStart(newMachineOwnedRangeStart);
+	        	message.setDeleteKeysRangeStart(deleteKeysRangeStart);
+	        	message.setDeleteKeysRangeEnd(deleteKeysRangeEnd);
+
+	        	//store it in the coordinator
+		        coordinator->pushMessage(message);
+    		} 
+    		
+    		//can be successor and predecessor at the same time if less than four machines in the system
+    		if(isFirstReplica(newNodeHash) || isSecondReplica(newNodeHash)){
+    			//start building the message
+	    		Message message;
+	        	message.setReason(REASON_JOIN);
+	        	message.setNewMemberHash(newNodeHash);
+
+	        	//set the role
+	    		message.setRole(ROLE_PREDECESSOR);
+
+	    		//store it in the coordinator
+		        coordinator->pushMessage(message);
+    		}
+    	}
+    }
+
+    void handleLeave(int leavingNodeHash) {
+    	if(keyToIPMap.find(leavingNodeHash) != keyToIPMap.end()) {
+			keyToIPMap.erase(leavingNodeHash); 
+		}
     }
 
     /** Postion checking functions **/
@@ -750,6 +788,9 @@ class MembershipList {
         return keyToIPMap.find(key)->second;
     }
 
+    int getNumberOfMembersInSystem() {
+    	return keyToIPMap.size();
+    }
 
     /*** position public interfaces **/
 
@@ -785,13 +826,22 @@ class MembershipList {
     	return getHashAtDistance(-3);
     }
 
+    int getHashOfFourthPredecessor() {
+    	return getHashAtDistance(-4);
+    }
+
     int getSelfHash() {
     	return selfHash;
     }
 
+    /*** join helper functions ***/
+    int isReplicatedKeysDeletingRequiredForJoin() {
+    	return isKeyToIPMapGreaterThanSize(3);
+    }
+
     /*** leave helper functions ***/
     int isReplicatedKeysSendingRequiredForLeave() {
-    	return keyToIPMap.size() > 3;
+    	return isKeyToIPMapGreaterThanSize(3);
     }
 
 

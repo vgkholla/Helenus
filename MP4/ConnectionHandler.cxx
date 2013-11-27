@@ -458,7 +458,7 @@ void ConnectionHandler::executeCb()
 void ConnectionHandler::sendMemberList(vector<string> memberIPs)
 {
     struct sockaddr_in serv_addr;
-    int sockfd, i, slen=sizeof(serv_addr);
+    int sockfd, slen=sizeof(serv_addr);
     int errorcode = 0;
     std::stringstream ss;
     
@@ -480,9 +480,12 @@ void ConnectionHandler::sendMemberList(vector<string> memberIPs)
         Coordinator *coord = this->getCoordinatorPtr();
         while(coord->hasMessage())
         {
+            KeyValueStore *kvStore = this->getKeyValuePtr();
+            MembershipList *memList = this->getMemPtr();
+
             Message message = coord->popMessage();
             if(message.getReason() == REASON_JOIN) {
-              ConnectionHandler::handleJoinEvent(message, this->getKeyValuePtr(), this->getMemPtr());
+              ConnectionHandler::handleJoinEvent(message, kvStore, memList);
             } else if (message.getReason() == REASON_FAILURE){
                 //failure and replication handling calls to key value store go here
             } else {
@@ -549,7 +552,35 @@ void ConnectionHandler::sendMemberList(vector<string> memberIPs)
 }
 
 void ConnectionHandler::handleJoinEvent(Message message, KeyValueStore *kvStore, MembershipList *memList) {
-    /* Find the IP of the node to move the keys to */
+    string role = message.getRole();
+    if(role == ROLE_PREDECESSOR) {
+        ConnectionHandler::handleJoinEventAsPredecessor(message, kvStore, memList);
+    } else if(role == ROLE_SUCCESSOR){
+        ConnectionHandler::handleJoinEventAsSuccessor(message, kvStore, memList);
+    } else {
+        cout<<"Unrecognized role during join!!"<<endl;
+    }
+} 
+
+void ConnectionHandler::handleJoinEventAsPredecessor(Message message, KeyValueStore *kvStore, MembershipList *memList) {
+    int errCode = 0;
+    vector<string> commands = kvStore->getCommandsToReplicateOwnedKeysAtJoin(&errCode);
+
+    string newMemberIP = memList->getIPFromHash(message.getNewMemberHash());
+    cout << "Replicating my owned keys in the new node in the system with IP " 
+         << newMemberIP 
+         << " and hash " << message.getNewMemberHash() 
+         << endl;
+
+    for(int i = 0; i < commands.size() ; i++) {
+        Utility::tcpConnectSocket(newMemberIP, SERVER_PORT,commands[i]);
+    }
+
+    cout<<"Replicated "<<commands.size()<<" owned key(s)"<<endl;
+
+}
+
+void ConnectionHandler::handleJoinEventAsSuccessor(Message message, KeyValueStore *kvStore, MembershipList *memList) {
     int errCode = 0;
     
     int newMachineOwnedRangeStart = message.getNewMachineOwnedRangeStart();
@@ -558,19 +589,44 @@ void ConnectionHandler::handleJoinEvent(Message message, KeyValueStore *kvStore,
     int newMachineOwnedRangeEnd = message.getNewMachineOwnedRangeEnd();
     cout<<"New machine owned range end: " << newMachineOwnedRangeEnd<<endl;
     
-    vector<string> commands = kvStore->getCommandsToTransferOwnedKeysAtJoin(newMachineOwnedRangeStart, newMachineOwnedRangeEnd, &errCode);
+    vector<string> deleteCommands;
+    vector<string> commands = kvStore->getCommandsToTransferOwnedKeysAtJoin(newMachineOwnedRangeStart, newMachineOwnedRangeEnd, &deleteCommands, &errCode);
 
-    string ip = memList->getIPFromHash(message.getNewMemberHash());
+    string newMemberIP = memList->getIPFromHash(message.getNewMemberHash());
     cout << "Moving some of my keys to the new node in the system with IP " 
-         << ip 
+         << newMemberIP 
          << " and hash " << message.getNewMemberHash() 
          << endl;
     
     for(int i = 0; i < commands.size() ; i++) {
-        Utility::tcpConnectSocket(ip, SERVER_PORT,commands[i]);
+        Utility::tcpConnectSocket(newMemberIP, SERVER_PORT,commands[i]);
     }
 
     cout<<"Moved "<<commands.size()<<" owned key(s)"<<endl;
+
+    if(memList->isReplicatedKeysDeletingRequiredForJoin()) {
+        string secondReplicaIP = memList->getIPofSecondReplica();
+        if(secondReplicaIP != "") {
+            cout << "Deleting the same keys in my second replica with IP " 
+                 << secondReplicaIP 
+                 << endl;
+            for(int i = 0; i < deleteCommands.size() ; i++) {
+                Utility::tcpConnectSocket(secondReplicaIP, SERVER_PORT,deleteCommands[i]);
+            }
+        }
+    }
+
+    int deleteKeysRangeStart = message.getDeleteKeysRangeStart();
+    int deleteKeysRangeEnd = message.getDeleteKeysRangeEnd();
+
+    if(deleteKeysRangeStart != -1) {
+        cout<<"Deleting some replicated keys from my own store"<<endl;
+        cout<<"Delete keys range start: " << deleteKeysRangeStart<<endl;
+        cout<<"Delete keys range end: " << deleteKeysRangeEnd<<endl;
+        
+        int deleted = kvStore->deleteReplicatedKeys(deleteKeysRangeStart, deleteKeysRangeEnd, &errCode);
+        cout<<"Deleted "<<deleted<<" replicated key(s)"<<endl;
+    } 
 }
 
 void ConnectionHandler::handleLeaveEvent(ErrorLog *logger, KeyValueStore *kvStore, MembershipList *memList) {
@@ -608,14 +664,14 @@ void ConnectionHandler::handleLeaveEvent(ErrorLog *logger, KeyValueStore *kvStor
             for(int i = 0; i < commandsForSecondPredecessorReplicatedKeys.size() ; i++) {
                 Utility::tcpConnectSocket(firstSuccessorIP,SERVER_PORT,commandsForSecondPredecessorReplicatedKeys[i]);
             }
-            cout<<"Moved "<<commandsForSecondPredecessorReplicatedKeys.size()<<" keys"<<endl;
+            cout<<"Moved "<<commandsForSecondPredecessorReplicatedKeys.size()/2<<" keys"<<endl;
 
             string secondSuccessorIP = memList->getIPofSecondSuccessor();
             cout << "Moving replicated keys of first predecessor to my second successor with IP " << secondSuccessorIP << endl;
             for(int i = 0; i < commandsForFirstPredecessorReplicatedKeys.size() ; i++) {
                 Utility::tcpConnectSocket(secondSuccessorIP,SERVER_PORT,commandsForFirstPredecessorReplicatedKeys[i]);
             }
-            cout<<"Moved "<<commandsForFirstPredecessorReplicatedKeys.size()<<" keys"<<endl;
+            cout<<"Moved "<<commandsForFirstPredecessorReplicatedKeys.size()/2<<" keys"<<endl;
         }
     } else {
         cout<<"No machines to send keys to. Alas! these keys will be lost forever (weeps)"<<endl;

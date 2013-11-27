@@ -130,7 +130,12 @@ namespace P2P
             static string performOperationLocally(KeyValueStoreCommand command, KeyValueStore *kvStore, MembershipList *memList);
   
             /**event handlers*/
+            //join
             static void handleJoinEvent(Message message, KeyValueStore *kvStore, MembershipList *memList);
+            static void handleJoinEventAsPredecessor(Message message, KeyValueStore *kvStore, MembershipList *memList);
+            static void handleJoinEventAsSuccessor(Message message, KeyValueStore *kvStore, MembershipList *memList);
+
+            //fail
             static void handleLeaveEvent(ErrorLog *logger, KeyValueStore *kvStore, MembershipList *memList);
             
             /** Handle File Update Membership List */
