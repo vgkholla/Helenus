@@ -606,69 +606,6 @@ class KeyValueStore {
 		return Utility::combineVectors(deleteCommands, insertCommands);
 	}
 
-
-	/**********************************LEAVE HANDLING FUNCTIONS***************************************/
-	
-	/**
-	 *	[builds commands for keys to be sent when this machine leaves]
-	 * @param  errCode 	 [space to store error code]
-	 * @return           [the built commands]
-	 */
-	vector<string> getCommandsToTransferOwnedKeysAtLeave(int *errCode) {
-		
-		//get all the keys owned by this store
-		vector<string> ownedKeys = getOwnedKeys(errCode);
-	
-		//create a force delete for each key and an insert for each key
-		//This will delete the replicated keys in the successor and insert is as owned keys
-		vector<string> forceDeleteCommands = getCommands(FORCE_DELETE_KEY, ownedKeys, errCode);
-		vector<string> insertCommands = getCommands(INSERT_KEY, ownedKeys, errCode);
-
-		//delete from this store
-		for(int i=0; i < ownedKeys.size(); i++) {
-			privateDeleteKey(ownedKeys[i], errCode);
-		}
-
-		return Utility::combineVectors(forceDeleteCommands, insertCommands);
-	}
-
-	vector<string> getCommandsToTransferReplicatedKeysAtLeave(int rangeStart, int rangeEnd, int *errCode) {
-		vector<string> commands;
-		if(rangeStart >= 0 && rangeEnd >= 0) {
-			if(rangeStart > rangeEnd) {
-				//if the owner machine of these range of keys is the first machine, split the range into two
-				vector<string> commandsLower = getCommandsToTransferReplicatedKeysAtLeave(0, rangeEnd, errCode);
-				vector<string> commandsHigher = getCommandsToTransferReplicatedKeysAtLeave(rangeStart, MAX_HASH + 1, errCode);
-				//combine
-				commands = Utility::combineVectors(commandsLower, commandsHigher);
-			} else {
-				//get all the keys for which this store is replica
-				vector<string> allReplicatedKeys = getReplicatedKeys(errCode);
-
-				//pick out keys which are in the range
-				vector<string> selectedReplicatedKeys;
-				for(int i =0 ; i < allReplicatedKeys.size() ; i++) {
-					string key = allReplicatedKeys[i];
-					int keyHash = getHash(key);
-					if(rangeStart <= keyHash &&  keyHash < rangeEnd) {
-						selectedReplicatedKeys.push_back(key);
-					}
-				}
-
-				vector<string> forceDeleteCommands = getCommands(FORCE_DELETE_KEY, selectedReplicatedKeys, errCode);
-				vector<string> forceInsertCommands = getCommands(FORCE_INSERT_KEY, selectedReplicatedKeys, errCode);
-
-				commands = Utility::combineVectors(forceDeleteCommands, forceInsertCommands);
-				//delete from this store
-				for(int i=0; i < selectedReplicatedKeys.size(); i++) {
-					privateDeleteKey(selectedReplicatedKeys[i], errCode);
-				}
-			}
-		}
-
-		return commands;
-	} 	
-
 	/******************FAILURE HANDLING FUNCTIONS**********************************/
 
 	vector<string> getCommandsToReplicateNewOwnedKeysAtFailOrLeave(int rangeStart, int rangeEnd, int *errCode) {

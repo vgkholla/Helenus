@@ -689,57 +689,10 @@ void ConnectionHandler::handleFailOrLeaveEventAsSuccessor(Message message, KeyVa
 
 
 void ConnectionHandler::handleLeaveEvent(ErrorLog *logger, KeyValueStore *kvStore, MembershipList *memList) {
-    //send the keys to another machine if I am leaving the system
     int errCode = 0;
-    /*vector<string> ownedKeysCommands = kvStore->getCommandsToTransferOwnedKeysAtLeave(&errCode);
-
-
-    string firstSuccessorIP = memList->getIPofSuccessor();
-    if(firstSuccessorIP != "") {
-        cout << "Moving owned keys to my successor with IP " << firstSuccessorIP << endl;
-        for(int i = 0; i < ownedKeysCommands.size() ; i++) {
-            Utility::tcpConnectSocket(firstSuccessorIP,SERVER_PORT,ownedKeysCommands[i]);
-        }
-        cout<<"Moved "<<ownedKeysCommands.size()/2<<" keys"<<endl;
-
-        if(memList->isReplicatedKeysSendingRequiredForLeave()) {
-            int firstPredecessorRangeStart = memList->getHashOfSecondPredecessor();
-            int firstPredecessorRangeEnd = memList->getHashOfFirstPredecessor();
-            cout<<"First predecessor range start: "<<firstPredecessorRangeStart<<endl;
-            cout<<"First predecessor range end: "<<firstPredecessorRangeEnd<<endl;
-
-            vector<string> commandsForFirstPredecessorReplicatedKeys = 
-                kvStore->getCommandsToTransferReplicatedKeysAtLeave(firstPredecessorRangeStart, firstPredecessorRangeEnd, &errCode);
-
-            int secondPredecessorRangeStart = memList->getHashOfThirdPredecessor();
-            int secondPredecessorRangeEnd = firstPredecessorRangeStart;
-            cout<<"Second predecessor range start: "<<secondPredecessorRangeStart<<endl;
-            cout<<"Second predecessor range end: "<<secondPredecessorRangeEnd<<endl;
-
-            vector<string> commandsForSecondPredecessorReplicatedKeys = 
-                kvStore->getCommandsToTransferReplicatedKeysAtLeave(secondPredecessorRangeStart, secondPredecessorRangeEnd, &errCode);
-
-            cout << "Moving replicated keys of second predecessor to my successor with IP " << firstSuccessorIP << endl;
-            for(int i = 0; i < commandsForSecondPredecessorReplicatedKeys.size() ; i++) {
-                Utility::tcpConnectSocket(firstSuccessorIP,SERVER_PORT,commandsForSecondPredecessorReplicatedKeys[i]);
-            }
-            cout<<"Moved "<<commandsForSecondPredecessorReplicatedKeys.size()/2<<" keys"<<endl;
-
-            string secondSuccessorIP = memList->getIPofSecondSuccessor();
-            cout << "Moving replicated keys of first predecessor to my second successor with IP " << secondSuccessorIP << endl;
-            for(int i = 0; i < commandsForFirstPredecessorReplicatedKeys.size() ; i++) {
-                Utility::tcpConnectSocket(secondSuccessorIP,SERVER_PORT,commandsForFirstPredecessorReplicatedKeys[i]);
-            }
-            cout<<"Moved "<<commandsForFirstPredecessorReplicatedKeys.size()/2<<" keys"<<endl;
-        }
-    } else {
-        cout<<"No machines to send keys to. Alas! these keys will be lost forever (weeps)"<<endl;
-    }*/
-
     string msg = "Elvis has left the building";
-    errCode = 0;
     logger->logDebug(MEMBER_LEFT, msg , &errCode);
-    //cout << "Clean up Time expired, Exiting now " << endl;
+    cout << msg << endl;
     exit(0);
 }
 
