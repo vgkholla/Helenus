@@ -487,7 +487,7 @@ void ConnectionHandler::sendMemberList(vector<string> memberIPs)
             if(message.getReason() == REASON_JOIN) {
               ConnectionHandler::handleJoinEvent(message, kvStore, memList);
             } else if (message.getReason() == REASON_FAILURE){
-                //failure and replication handling calls to key value store go here
+                ConnectionHandler::handleFailOrLeaveEvent(message, kvStore, memList);
             } else {
                 string msg = "Did not recognize the message reason: '" + message.getReason() + "'";
                 logger->logError(UNRECOGNIZED_MESSAGE_REASON, msg, &errorcode);
@@ -564,7 +564,7 @@ void ConnectionHandler::handleJoinEvent(Message message, KeyValueStore *kvStore,
 
 void ConnectionHandler::handleJoinEventAsPredecessor(Message message, KeyValueStore *kvStore, MembershipList *memList) {
     int errCode = 0;
-    vector<string> commands = kvStore->getCommandsToReplicateOwnedKeysAtJoin(&errCode);
+    vector<string> commands = kvStore->getCommandsToReplicateOwnedKeys(&errCode);
 
     string newMemberIP = memList->getIPFromHash(message.getNewMemberHash());
     cout << "Replicating my owned keys in the new node in the system with IP " 
@@ -576,7 +576,7 @@ void ConnectionHandler::handleJoinEventAsPredecessor(Message message, KeyValueSt
         Utility::tcpConnectSocket(newMemberIP, SERVER_PORT,commands[i]);
     }
 
-    cout<<"Replicated "<<commands.size()<<" owned key(s)"<<endl;
+    cout<<"Replicated "<<commands.size()/2<<" owned key(s)"<<endl;
 
 }
 
@@ -629,10 +629,69 @@ void ConnectionHandler::handleJoinEventAsSuccessor(Message message, KeyValueStor
     } 
 }
 
+void ConnectionHandler::handleFailOrLeaveEvent(Message message, KeyValueStore *kvStore, MembershipList *memList) {
+    string role = message.getRole();
+    if(role == ROLE_PREDECESSOR) {
+        ConnectionHandler::handleFailOrLeaveEventAsPredecessor(message, kvStore, memList);
+    } else if(role == ROLE_SUCCESSOR){
+        ConnectionHandler::handleFailOrLeaveEventAsSuccessor(message, kvStore, memList);
+    } else {
+        cout<<"Unrecognized role during fail/leave!!"<<endl;
+    }
+} 
+
+void ConnectionHandler::handleFailOrLeaveEventAsPredecessor(Message message, KeyValueStore *kvStore, MembershipList *memList) {
+    int errCode = 0;
+    vector<string> commands = kvStore->getCommandsToReplicateOwnedKeys(&errCode);
+
+    string newSecondReplicaIP = memList->getIPofSecondReplica();
+    if(newSecondReplicaIP != "") {
+        cout << "Replicating my owned keys in a another node in the system with IP " 
+             << newSecondReplicaIP 
+             << endl;
+
+        for(int i = 0; i < commands.size() ; i++) {
+            Utility::tcpConnectSocket(newSecondReplicaIP, SERVER_PORT,commands[i]);
+        }
+
+        cout<<"Replicated "<<commands.size()/2<<" owned key(s)"<<endl;
+    }
+
+}
+
+void ConnectionHandler::handleFailOrLeaveEventAsSuccessor(Message message, KeyValueStore *kvStore, MembershipList *memList) {
+    int errCode = 0;
+    
+    int newOwnedKeysRangeStart = message.getNewOwnedKeysRangeStart();
+    cout<<"New owned keys range start: " << newOwnedKeysRangeStart<<endl;
+    
+    int newOwnedKeysRangeEnd = message.getNewOwnedKeysRangeEnd();
+    cout<<"New owned keys range end: " << newOwnedKeysRangeEnd<<endl;
+    
+    vector<string> commands = kvStore->getCommandsToReplicateNewOwnedKeysAtFailOrLeave(
+        newOwnedKeysRangeStart, newOwnedKeysRangeEnd, &errCode);
+
+    cout<<"Marked "<<commands.size()/2<<" key(s) as newly owned"<<endl;
+
+    string newSecondReplicaIP = memList->getIPofSecondReplica();
+    if(newSecondReplicaIP != "") {
+    cout << "Replicating new owned keys at node in the system with IP " 
+             << newSecondReplicaIP 
+             << endl;
+        
+        for(int i = 0; i < commands.size() ; i++) {
+            Utility::tcpConnectSocket(newSecondReplicaIP, SERVER_PORT,commands[i]);
+        }
+
+        cout<<"Replicated "<<commands.size()/2<<" newly owned key(s)"<<endl;
+    }
+}
+
+
 void ConnectionHandler::handleLeaveEvent(ErrorLog *logger, KeyValueStore *kvStore, MembershipList *memList) {
     //send the keys to another machine if I am leaving the system
     int errCode = 0;
-    vector<string> ownedKeysCommands = kvStore->getCommandsToTransferOwnedKeysAtLeave(&errCode);
+    /*vector<string> ownedKeysCommands = kvStore->getCommandsToTransferOwnedKeysAtLeave(&errCode);
 
 
     string firstSuccessorIP = memList->getIPofSuccessor();
@@ -675,7 +734,7 @@ void ConnectionHandler::handleLeaveEvent(ErrorLog *logger, KeyValueStore *kvStor
         }
     } else {
         cout<<"No machines to send keys to. Alas! these keys will be lost forever (weeps)"<<endl;
-    }
+    }*/
 
     string msg = "Elvis has left the building";
     errCode = 0;

@@ -130,9 +130,13 @@ class MembershipList {
 	 * @param entry [the entry to be removed]
 	 */
 	void removeFromList(MembershipDetails entry) {
-		if(keyToIPMap.find(entry.nodeHash) != keyToIPMap.end()) {
+		/*if(keyToIPMap.find(entry.nodeHash) != keyToIPMap.end()) {
 			keyToIPMap.erase(entry.nodeHash); 
-		}
+		}*/
+	
+		//if a machine is failed or leaving, might need to take some action
+		handleFailOrLeave(entry.nodeHash);
+
 		//lookup by network id and delete
 		for(int i =0 ; i < memList.size(); i++ ) {
 			if(entry.id == memList[i].id) {
@@ -142,8 +146,6 @@ class MembershipList {
 			}
 		}
 		printkeyToIPMap();
-                       
-
 	}
 
 	void printkeyToIPMap() {
@@ -187,9 +189,9 @@ class MembershipList {
 			localEntry->localTimestamp = time(0);//timestamp right now
 			localEntry->failed = 0;//reset failure if applicable
 			localEntry->leaving = remoteEntry.leaving;//does the guy want to leave now?
-			if(remoteEntry.leaving == 1) {
+			/*if(remoteEntry.leaving == 1) {
 				handleLeave(remoteEntry.nodeHash);
-			}
+			}*/
 		}
 	}
 
@@ -464,7 +466,7 @@ class MembershipList {
 	}
 
 	int isKeyToIPMapGreaterThanSize(int size) {
-		return keyToIPMap.size() > size;
+		return getNumberOfMembersInSystem() > size;
 	}
 
 	/**
@@ -473,7 +475,7 @@ class MembershipList {
 	 */
     void handleJoin(int newNodeHash) {
     	//there should be more than one machine and the new machine should be the predecessor
-    	if(keyToIPMap.size() > 1) {
+    	if(getNumberOfMembersInSystem() > 1) {
     		if(isPredecessor(newNodeHash)) {//this machine is the first successor
 	    		//start building the message
 	    		Message message;
@@ -485,16 +487,16 @@ class MembershipList {
 	        	int newMachineOwnedRangeStart = -1;
 	        	
 	        	int deleteKeysRangeStart;
-	        	if(keyToIPMap.size() == 4) {
-	        		deleteKeysRangeStart = selfHash;
+	        	if(getNumberOfMembersInSystem() == 4) {
+	        		deleteKeysRangeStart = getSelfHash();
 	        	} else {
 	        		deleteKeysRangeStart = getHashOfFourthPredecessor();
 	        	}
 
 	        	int deleteKeysRangeEnd = getHashOfThirdPredecessor();
 
-	        	if(keyToIPMap.size() == 2) {//special case of only two machines. Each machine is the predecessor and successor of each other
-	        		newMachineOwnedRangeStart = selfHash;
+	        	if(getNumberOfMembersInSystem() == 2) {//special case of only two machines. Each machine is the predecessor and successor of each other
+	        		newMachineOwnedRangeStart = getSelfHash();
 	        	} else {//in this case the predecessor of the new machine is the second predecessor of this machine
 	        		newMachineOwnedRangeStart = getHashOfSecondPredecessor();
 	        	}
@@ -528,6 +530,35 @@ class MembershipList {
 		}
     }
 
+    void handleFailOrLeave(int nodeHash) {
+    	//start building the message
+		Message message;
+    	message.setReason(REASON_FAILURE);
+    	message.setFailedMemberHash(nodeHash);
+
+    	//set the role
+    	if(isPredecessor(nodeHash)) {
+    		message.setRole(ROLE_SUCCESSOR);
+    		int newPredecessorHash = -1;
+    		//the current second predecessor will become the new predecessor after the failed entry is taken out
+    		if(getNumberOfMembersInSystem() == 2) {
+    			newPredecessorHash = getSelfHash();
+    		} else {
+    			newPredecessorHash = getHashOfSecondPredecessor();
+    		}
+    		message.setNewOwnedKeysRangeStart(newPredecessorHash);
+    		//all done. prepared for failure handling
+    		//store it in the coordinator
+        	coordinator->pushMessage(message);
+    	} else if (isFirstReplica(nodeHash) || isSecondReplica(nodeHash)) {
+    		message.setRole(ROLE_PREDECESSOR);
+    		//nothing else to do here. the predecessor is just expected to pick up his own keys and replicate them
+    		//store it in the coordinator
+        	coordinator->pushMessage(message);
+    	}
+
+    }
+
     /** Postion checking functions **/
 
     map<int,string>::iterator getMachineAtDistance(int distance) {
@@ -539,8 +570,8 @@ class MembershipList {
     		increment = 0;
     	}
 
-    	if(distance + 1 <= keyToIPMap.size()) {
-	    	map<int,string>::iterator selfEntry = keyToIPMap.find(selfHash);
+    	if(distance + 1 <= getNumberOfMembersInSystem()) {
+	    	map<int,string>::iterator selfEntry = keyToIPMap.find(getSelfHash());
 	    	requiredMachine = selfEntry;
 	    	while(distance > 0) {
 	    		if(increment) {
@@ -644,7 +675,7 @@ class MembershipList {
         keyToIPMap.insert(std::pair<int,string>(entry.nodeHash,getIPFromNetworkID(entry.id))); 
         printkeyToIPMap();
         
-        if(keyToIPMap.size() > 1) {
+        if(getNumberOfMembersInSystem() > 1) {
         	handleJoin(entry.nodeHash);
     	}
 	}

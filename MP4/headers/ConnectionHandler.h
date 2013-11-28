@@ -136,6 +136,11 @@ namespace P2P
             static void handleJoinEventAsSuccessor(Message message, KeyValueStore *kvStore, MembershipList *memList);
 
             //fail
+            static void handleFailOrLeaveEvent(Message message, KeyValueStore *kvStore, MembershipList *memList);
+            static void handleFailOrLeaveEventAsPredecessor(Message message, KeyValueStore *kvStore, MembershipList *memList);
+            static void handleFailOrLeaveEventAsSuccessor(Message message, KeyValueStore *kvStore, MembershipList *memList);
+
+            //leave
             static void handleLeaveEvent(ErrorLog *logger, KeyValueStore *kvStore, MembershipList *memList);
             
             /** Handle File Update Membership List */

@@ -340,6 +340,32 @@ class KeyValueStore {
 		return keys;
 	}
 
+	int changeKeyToOwned(string key, int *errCode) {
+		//check for preexisting error
+		int status = checkForPreExistingError(errCode, __func__);
+		if (status == FAILURE) {
+			return status;
+		}
+
+		pthread_mutex_lock (&mutexsum);
+
+		boost::unordered_map<string, Value>::iterator lookupEntry = privateLookupKey(key, errCode, 1);
+		
+		if(lookupEntry != keyValueStore.end()) { //key exists
+			//set as the owner
+			lookupEntry->second.setAsOwner();
+		} else { //key does not exist
+			string msg = "Updating ownership status of key failed. Check if key exists. Key is " + key;
+			logger->logError(UPDATE_FAILED, msg , errCode);
+			*errCode = UPDATE_FAILED;
+			status = FAILURE;
+		}
+
+		pthread_mutex_unlock (&mutexsum);
+
+		return status;
+	}
+
 
 	public:
 	/**
@@ -568,14 +594,16 @@ class KeyValueStore {
 		return deleted;
 	}
 
-	vector<string> getCommandsToReplicateOwnedKeysAtJoin(int *errCode) {
+	vector<string> getCommandsToReplicateOwnedKeys(int *errCode) {
 		//get all the keys owned by this store
 		vector<string> ownedKeys = getOwnedKeys(errCode);
 	
+		//create force deletes in case the machine has a stale copy
+		vector<string> deleteCommands = getCommands(FORCE_DELETE_KEY, ownedKeys, errCode);
 		//create force inserts for replication
 		vector<string> insertCommands = getCommands(FORCE_INSERT_KEY, ownedKeys, errCode);
 
-		return insertCommands;
+		return Utility::combineVectors(deleteCommands, insertCommands);
 	}
 
 
@@ -641,7 +669,43 @@ class KeyValueStore {
 		return commands;
 	} 	
 
-	//******************ADD ONE FOR FAILURE HERE**********************************
+	/******************FAILURE HANDLING FUNCTIONS**********************************/
+
+	vector<string> getCommandsToReplicateNewOwnedKeysAtFailOrLeave(int rangeStart, int rangeEnd, int *errCode) {
+		vector<string> commands;
+		int status = 1;
+		if(rangeStart >= 0 && rangeEnd >= 0) {
+			if(rangeStart > rangeEnd) {
+				//if the owner machine of these range of keys is the first machine, split the range into two
+				vector<string> commandsLower = getCommandsToReplicateNewOwnedKeysAtFailOrLeave(0, rangeEnd, errCode);
+				vector<string> commandsHigher = getCommandsToReplicateNewOwnedKeysAtFailOrLeave(rangeStart, MAX_HASH + 1, errCode);
+				//combine
+				commands = Utility::combineVectors(commandsLower, commandsHigher);
+			} else {
+				//get all the keys for which this store is replica
+				vector<string> allReplicatedKeys = getReplicatedKeys(errCode);
+
+				//pick out keys which are in the range
+				vector<string> selectedReplicatedKeys;
+				for(int i =0 ; i < allReplicatedKeys.size() ; i++) {
+					string key = allReplicatedKeys[i];
+					int keyHash = getHash(key);
+					if(rangeStart <= keyHash &&  keyHash < rangeEnd) {
+						//mark it as owned
+						status = changeKeyToOwned(key, errCode);
+						selectedReplicatedKeys.push_back(key);
+					}
+				}
+
+				vector<string> forceDeleteCommands = getCommands(FORCE_DELETE_KEY, selectedReplicatedKeys, errCode);
+				vector<string> forceInsertCommands = getCommands(FORCE_INSERT_KEY, selectedReplicatedKeys, errCode);
+
+				commands = Utility::combineVectors(forceDeleteCommands, forceInsertCommands);
+			}
+		}
+
+		return commands;
+	}
 
 };
 

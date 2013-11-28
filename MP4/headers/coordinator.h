@@ -29,6 +29,7 @@ class Message {
 	
 	//for failure
 	int failedMemberHash;//if reason is failure, the hash of the machine that failed
+	int newOwnedKeysRangeStart; //what new keys does a successor own now?
 
 	public:
 	Message() {
@@ -76,6 +77,14 @@ class Message {
 		return failedMemberHash;
 	}
 
+	int getNewOwnedKeysRangeStart() {
+		return newOwnedKeysRangeStart;
+	}
+
+	int getNewOwnedKeysRangeEnd() {
+		return getFailedMemberHash();
+	}
+
 	//setters
 	//general
 	void setReason(string reasonString) {
@@ -106,6 +115,10 @@ class Message {
 	//failed
 	void setFailedMemberHash(int hash) {
 		failedMemberHash = hash;
+	}
+
+	void setNewOwnedKeysRangeStart(int hash) {
+		newOwnedKeysRangeStart = hash;
 	}
 
 };
