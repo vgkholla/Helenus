@@ -198,13 +198,14 @@ void* ConnectionHandler::updateKeyValue(void* lp)
 {
     mystruct *ptr = static_cast<mystruct*>(lp);
     ConnectionHandler *ptr1 = (ConnectionHandler*)ptr->owner;
-    char buffer[12288];
-    int buffer_len = 12288;
     string msg;
-    int bytecount;
     string keyToInsert;
     int hash;
     int interval = 1;
+
+    //char buffer[12288];
+    //int buffer_len = 12288;
+    //int bytecount;
 
     string received = Utility::rcvData(ptr->sock);
     /* Parse and find out the command type */
@@ -263,12 +264,15 @@ void* ConnectionHandler::updateKeyValue(void* lp)
                  << ip
                  << endl;
             msg = Utility::tcpConnectSocket(ip,SERVER_PORT,received);
-            ip = ptr1->getMemPtr()->getIPToSendToFromKeyHash(hash);
-            sleep(2*interval);
-            interval++;
+            if(msg == "Failed to Connect") {
+                ip = ptr1->getMemPtr()->getIPToSendToFromKeyHash(hash);
+                sleep(2*interval);
+                interval++;
+            }
         }
         while(msg == "Failed to Connect");
     }
+
     Utility::sendData(ptr->sock,msg);
     close(ptr->sock);
     ptr->sock = -1;
@@ -340,7 +344,7 @@ string ConnectionHandler::performOperationLocally(KeyValueStoreCommand command, 
             msg = status == SUCCESS ? "Command succeeded" : "Command failed";
         }
         else {
-            msg = Utility::findMovies(msg);
+            //msg = Utility::findMovies(msg);
         }
 
         return msg;
