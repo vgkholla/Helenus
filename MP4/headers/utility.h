@@ -10,8 +10,11 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <netinet/tcp.h>
 #include <iostream>
 #include <vector>
+#include <errno.h>
+#include <sys/ioctl.h>
 
 using namespace std;
 
@@ -142,6 +145,7 @@ class Utility {
 
         /* Setting socket options */
         if( (setsockopt(hsock, SOL_SOCKET, SO_REUSEADDR, (char*)p_int, sizeof(int)) == -1 )||
+            (setsockopt(hsock, IPPROTO_TCP, TCP_NODELAY, (char*)p_int, sizeof(int)) == -1 )||
             (setsockopt(hsock, SOL_SOCKET, SO_KEEPALIVE, (char*)p_int, sizeof(int)) == -1 ) ){
             string msg = "Failed to set socket options";
             cout << msg << endl;
@@ -209,33 +213,129 @@ class Utility {
         my_addr.sin_port = htons(port);
 
         memset(&(my_addr.sin_zero), 0, 8);
-        my_addr.sin_addr.s_addr = inet_addr(address.c_str());;
+        my_addr.sin_addr.s_addr = inet_addr(address.c_str());
 
-    if( connect( hsock, (struct sockaddr*)&my_addr, sizeof(my_addr)) == -1 ){
+        if( connect( hsock, (struct sockaddr*)&my_addr, sizeof(my_addr)) == -1 ){
             string msg = "Failed to Connect";
             cout << msg << endl;
+            close(hsock);
+            hsock = -1;
+            return msg;
             //logger->logError(SOCKET_ERROR, msg , &errCode);
         }
 
-        if(send(hsock, msg.c_str(), strlen(msg.c_str()), 0) < 0)
+        sendData(hsock,msg);
+        string result = rcvData(hsock);
+
+        close(hsock);
+        hsock = -1;
+        return result;
+
+    }
+    static int sendData(int sock, string msg) {
+
+        char buffer[1024];
+        int buffer_len = 1024;
+        std::ostringstream oss;
+        int len = strlen(msg.c_str());
+
+        if(send(sock, &len, sizeof(len), 0) < 0)
         {
-            string msg = "Failed to send msg via socket";
-            cout << msg << endl;
-            //logger->logError(SOCKET_ERROR, msg , &errCode);
+                cout << "ERROR: Failed to send file size" << strerror(errno) << endl;
         }
+        memset(buffer, 0, buffer_len);
+        size_t pos = 0, last_pos = 0;
+        std::string::iterator it = msg.begin();
+        do
+        {
+            if(it == msg.end())
+            {
+                std::size_t length = msg.copy(buffer,msg.length(),last_pos);
+                buffer[length]='\0';
+                if(send(sock, buffer, strlen(buffer), 0) < 0)
+                {
+                        cout << "ERROR: Failed to send file size" << strerror(errno) << endl;
+                }
+                break;
+            }
+            if((pos - last_pos) == 1024)
+            {
+                std::size_t length = msg.copy(buffer,pos - last_pos,last_pos);
+                if(send(sock, buffer, strlen(buffer), 0) < 0)
+                {
+                        cout << "ERROR: Failed to send file size" << strerror(errno) << endl;
+                }
+                last_pos = pos++;
+            }
+            pos++;
+            ++it;
+        }
+        while(true);
+    }
+    static string rcvData(int sock) {
+        int size;
+        int rcv = 0;
+        string result;
+        char buffer[1024];
+        int buffer_len = 1024;
+        int bytecount;
 
         memset(buffer, 0, buffer_len);
-        if((bytecount = recv(hsock, buffer, buffer_len, 0))== -1)
+        if((bytecount = recv(sock, &size, sizeof(size), 0))== -1)
         {
             string msg = "Failed to receive reply via socket";
             cout << msg << endl;
             //logger->logError(SOCKET_ERROR, msg , &errCode);
         }
 
-        close(hsock);
-        hsock = -1;
-        string result = buffer;
+        memset(buffer, '\0', buffer_len);
+        while(rcv != size) {
+            if((bytecount = recv(sock, buffer, buffer_len, 0)) <= 0)
+            {
+                string msg = "Failed to receive reply via socket";
+                cout << msg << endl;
+            }
+            else {
+                result+=buffer;
+                rcv += bytecount;
+                memset(buffer, '\0', buffer_len);
+            }
+        }
         return result;
+    }
+    static string findMovies(string indexes) {
+        string line;
+        ifstream Myfile;
+        std::size_t next = 0;
+        list<int> lineno;
+        while(next < indexes.length())
+        {
+            next = indexes.find(",");
+            lineno.push_back(atoi((indexes.substr(0,next)).c_str()));
+            indexes = indexes.substr(next+1,indexes.length() - next);
+        }
+        Myfile.open ("movies");
+        int linenum = 1;
+        indexes = "";
+        if(Myfile.is_open())
+        {
+            while(!Myfile.eof())
+            {
+                getline(Myfile,line);
+                for (std::list<int>::iterator it=lineno.begin(); it != lineno.end(); ++it)
+                {
+                    if(linenum == *it)
+                    {
+                        indexes += line;
+                        indexes += "\n";
+                    }
+                }
+                linenum++;
+            }
+            Myfile.close();
+        }
+        indexes += "\0";
+        return indexes;
     }
 
 };

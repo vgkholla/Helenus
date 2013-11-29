@@ -204,14 +204,9 @@ void* ConnectionHandler::updateKeyValue(void* lp)
     int bytecount;
     string keyToInsert;
     int hash;
+    int interval = 1;
 
-    memset(buffer, 0, buffer_len);
-    /* Accept the key vlaue store command */
-    if((bytecount = recv(ptr->sock, buffer, buffer_len, 0))== -1)
-    {
-        cout << "Error receiving data " << strerror(errno) << endl;
-    }
-    string received = buffer;
+    string received = Utility::rcvData(ptr->sock);
     /* Parse and find out the command type */
     KeyValueStoreCommand command = CommandLineTools::parseKeyValueStoreCmd(received);
     /* Find the key */
@@ -260,19 +255,21 @@ void* ConnectionHandler::updateKeyValue(void* lp)
     }    
     else
     {
-        /* If the IP is different, connect to the correct node */
-        cout << "Key hash higher than my Node Hash.. Connecting to the right node with ip" 
-             << ip 
-             << endl;
-        msg = Utility::tcpConnectSocket(ip,SERVER_PORT,received);
+        do
+        {
+            /* If the IP is different, connect to the correct node */
+
+            cout << "Key hash higher than my Node Hash.. Connecting to the right node with ip"
+                 << ip
+                 << endl;
+            msg = Utility::tcpConnectSocket(ip,SERVER_PORT,received);
+            ip = ptr1->getMemPtr()->getIPToSendToFromKeyHash(hash);
+            sleep(2*interval);
+            interval++;
+        }
+        while(msg == "Failed to Connect");
     }
-    strcpy(buffer,msg.c_str());
-    buffer[strlen(buffer)]='\0';
-    /* reply back with success or failure, or the key value pair in case of a show command */
-    if(send(ptr->sock, buffer, strlen(buffer), 0) < 0)
-    {
-        cout << "ERROR: Failed to send file size" << strerror(errno) << endl;
-    }
+    Utility::sendData(ptr->sock,msg);
     close(ptr->sock);
     ptr->sock = -1;
     pthread_exit(NULL);
@@ -341,6 +338,9 @@ string ConnectionHandler::performOperationLocally(KeyValueStoreCommand command, 
 
         if(operation != LOOKUP_KEY && operation != FORCE_LOOKUP_KEY && operation != SHOW_KVSTORE) {
             msg = status == SUCCESS ? "Command succeeded" : "Command failed";
+        }
+        else {
+            msg = Utility::findMovies(msg);
         }
 
         return msg;
