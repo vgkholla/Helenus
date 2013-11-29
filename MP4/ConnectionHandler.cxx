@@ -673,6 +673,19 @@ void ConnectionHandler::handleFailOrLeaveEventAsSuccessor(Message message, KeyVa
 
     cout<<"Marked "<<commands.size()/2<<" key(s) as newly owned"<<endl;
 
+    string firstReplicaIP = memList->getIPofFirstReplica();
+    if(firstReplicaIP != "") {
+    cout << "Replicating new owned keys at node in the system with IP " 
+             << firstReplicaIP 
+             << endl;
+        
+        for(int i = 0; i < commands.size() ; i++) {
+            Utility::tcpConnectSocket(firstReplicaIP, SERVER_PORT,commands[i]);
+        }
+
+        cout<<"Replicated "<<commands.size()/2<<" newly owned key(s)"<<endl;
+    }
+
     string newSecondReplicaIP = memList->getIPofSecondReplica();
     if(newSecondReplicaIP != "") {
     cout << "Replicating new owned keys at node in the system with IP " 
