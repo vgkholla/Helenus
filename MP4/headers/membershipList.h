@@ -145,7 +145,6 @@ class MembershipList {
 				break;
 			}
 		}
-		printkeyToIPMap();
 	}
 
 	void printkeyToIPMap() {
@@ -521,6 +520,8 @@ class MembershipList {
 	    		//store it in the coordinator
 		        coordinator->pushMessage(message);
     		}
+
+    		cout<<"Machine joined: " << getIPFromHash(newNodeHash) <<endl;
     	}
     }
 
@@ -556,6 +557,8 @@ class MembershipList {
     		//store it in the coordinator
         	coordinator->pushMessage(message);
     	}
+
+    	cout<<"Machine failed/left: " << getIPFromHash(nodeHash) <<endl;
 
     }
 
@@ -673,7 +676,6 @@ class MembershipList {
 	void addToList(MembershipDetails entry) {
 		memList.push_back(entry);
         keyToIPMap.insert(std::pair<int,string>(entry.nodeHash,getIPFromNetworkID(entry.id))); 
-        printkeyToIPMap();
         
         if(getNumberOfMembersInSystem() > 1) {
         	handleJoin(entry.nodeHash);

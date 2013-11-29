@@ -148,7 +148,8 @@ void* ConnectionHandler::showCommandPrompt(void* lp)
 
         if(command.isValidCommand()) {
             string msg;
-            msg = "Key value store entries:\n";
+            msg = "Hash of this machine: " + Utility::intToString(ptr1->getMemPtr()->getSelfHash()) + "\n";
+            msg += "Key value store entries:\n";
             msg += ptr1->getKeyValuePtr()->returnAllEntries(&errCode);
             msg += "Membership list:\n";
             msg += ptr1->getMemPtr()->getkeyToIPMapDetails();
@@ -223,7 +224,7 @@ void* ConnectionHandler::updateKeyValue(void* lp)
         ip = ptr1->myIP;
     }
 
-    cout<<"Operation is "
+    /*cout<<"Operation is "
         << command.getOperation()
         << ". Key is "
         << command.getKey()
@@ -231,7 +232,7 @@ void* ConnectionHandler::updateKeyValue(void* lp)
         <<command.getValue()
         << ". Key Hash is "
         << hash
-        <<endl;
+        <<endl;*/
 
 
     if(ptr1->myIP == ip || command.isForceOperation())//the second check is superfluous, but keeping it anyway
@@ -260,9 +261,9 @@ void* ConnectionHandler::updateKeyValue(void* lp)
         {
             /* If the IP is different, connect to the correct node */
 
-            cout << "Key hash higher than my Node Hash.. Connecting to the right node with ip"
+            /*cout << "Key hash higher than my Node Hash.. Connecting to the right node with ip"
                  << ip
-                 << endl;
+                 << endl;*/
             msg = Utility::tcpConnectSocket(ip,SERVER_PORT,received);
             if(msg == "Failed to Connect") {
                 ip = ptr1->getMemPtr()->getIPToSendToFromKeyHash(hash);
@@ -316,7 +317,7 @@ string ConnectionHandler::performOperationLocally(KeyValueStoreCommand command, 
         string key = command.getKey();
         string value = command.getValue();
         
-        cout << "Correct node found, performing " << command.getOperation() << " locally" << endl;
+        //cout << "Correct node found, performing " << command.getOperation() << " locally" << endl;
         if(operation == INSERT_KEY) {//insert
             status = kvStore->insertKeyValue(key, value, &errCode);
         } else if(operation == FORCE_INSERT_KEY ) {//force insert
