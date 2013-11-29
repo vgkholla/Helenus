@@ -15,6 +15,8 @@
 #include <vector>
 #include <errno.h>
 #include <sys/ioctl.h>
+#include <fstream>
+#include <list>
 
 using namespace std;
 
@@ -181,9 +183,9 @@ class Utility {
         int hsock;
         int * p_int ;
         struct sockaddr_in my_addr;
-        char buffer[12288];
-        int buffer_len = 12288;
-        int bytecount;
+        //char buffer[12288];
+        //int buffer_len = 12288;
+        //int bytecount;
         //int errCode = 0;
         //socklen_t addr_size = 0;
         //int* csock;
@@ -265,7 +267,7 @@ class Utility {
             }
             if((pos - last_pos) == 1024)
             {
-                std::size_t length = msg.copy(buffer,pos - last_pos,last_pos);
+                //std::size_t length = msg.copy(buffer,pos - last_pos,last_pos);
                 if(send(sock, buffer, strlen(buffer), 0) < 0)
                 {
                         cout << "ERROR: Failed to send file size" << strerror(errno) << endl;
