@@ -226,7 +226,10 @@ class Utility {
             //logger->logError(SOCKET_ERROR, msg , &errCode);
         }
 
-        sendData(hsock,msg);
+        if(sendData(hsock,msg) < 0) {
+            string msg = "Failed to send";
+            return msg;
+        }    
         string result = rcvData(hsock);
 
         close(hsock);
@@ -244,6 +247,7 @@ class Utility {
         if(send(sock, &len, sizeof(len), 0) < 0)
         {
                 cout << "ERROR: Failed to send file size" << strerror(errno) << endl;
+                return -1;
         }
         memset(buffer, 0, buffer_len);
         size_t pos = 0, last_pos = 0;
@@ -257,6 +261,7 @@ class Utility {
                 if(send(sock, buffer, strlen(buffer), 0) < 0)
                 {
                         cout << "ERROR: Failed to send file size" << strerror(errno) << endl;
+                        return -1;
                 }
                 break;
             }
@@ -266,6 +271,7 @@ class Utility {
                 if(send(sock, buffer, strlen(buffer), 0) < 0)
                 {
                         cout << "ERROR: Failed to send file size" << strerror(errno) << endl;
+                        return -1;
                 }
                 last_pos = pos++;
             }
@@ -273,7 +279,9 @@ class Utility {
             ++it;
         }
         while(true);
+        return 0;
     }
+
     static string rcvData(int sock) {
         int size;
         int rcv = 0;
@@ -287,6 +295,7 @@ class Utility {
         {
             string msg = "Failed to receive reply via socket";
             cout << msg << endl;
+            return msg;
             //logger->logError(SOCKET_ERROR, msg , &errCode);
         }
 
@@ -296,6 +305,7 @@ class Utility {
             {
                 string msg = "Failed to receive reply via socket";
                 cout << msg << endl;
+                return msg;
             }
             else {
                 result+=buffer;
@@ -305,6 +315,7 @@ class Utility {
         }
         return result;
     }
+
     static string findMovies(string indexes) {
         string line;
         ifstream Myfile;
