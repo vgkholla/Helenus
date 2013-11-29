@@ -345,7 +345,7 @@ string ConnectionHandler::performOperationLocally(KeyValueStoreCommand command, 
             msg = status == SUCCESS ? "Command succeeded" : "Command failed";
         }
         else {
-            //msg = Utility::findMovies(msg);
+            msg = Utility::findMovies(msg);
         }
 
         return msg;

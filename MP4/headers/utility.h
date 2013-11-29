@@ -293,7 +293,7 @@ class Utility {
         memset(buffer, 0, buffer_len);
         if((bytecount = recv(sock, &size, sizeof(size), 0))== -1)
         {
-            string msg = "Failed to receive reply via socket";
+            string msg = "Failed to receive reply via socket during size get";
             cout << msg << endl;
             return msg;
             //logger->logError(SOCKET_ERROR, msg , &errCode);
@@ -303,7 +303,7 @@ class Utility {
         while(rcv != size) {
             if((bytecount = recv(sock, buffer, buffer_len, 0)) <= 0)
             {
-                string msg = "Failed to receive reply via socket";
+                string msg = "Failed to receive reply via socket during data get";
                 cout << msg << endl;
                 return msg;
             }
@@ -327,7 +327,7 @@ class Utility {
             lineno.push_back(atoi((indexes.substr(0,next)).c_str()));
             indexes = indexes.substr(next+1,indexes.length() - next);
         }
-        Myfile.open ("movies");
+        Myfile.open ("top250");
         int linenum = 1;
         indexes = "";
         if(Myfile.is_open())

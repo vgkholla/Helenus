@@ -11,10 +11,8 @@ do
     #   break
     #fi
     key=`echo $line | cut -f 1 -d ':'`
-    value=`echo $line | cut -f 3 -d ':'`
     #key=`cut -f 1 -d ':' t`
-    echo $key
-    echo $value
-    ./$CLIENT_BINARY --dst $DEST_ADDR --port $DEST_PORT --command insert\($key,$value\)
+    #echo $key
+    ./$CLIENT_BINARY --dst $DEST_ADDR --port $DEST_PORT --command lookup\($key\)
 done < /Users/Holla/Dropbox/Masters/MCS/Fall2013/CS425-DistributedSystems/ds-mps/MP4/indexes250.txt
 
