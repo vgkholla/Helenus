@@ -15,6 +15,8 @@
 #include <vector>
 #include <errno.h>
 #include <sys/ioctl.h>
+#include <fstream>
+#include <list>
 
 using namespace std;
 
@@ -181,9 +183,9 @@ class Utility {
         int hsock;
         int * p_int ;
         struct sockaddr_in my_addr;
-        char buffer[12288];
-        int buffer_len = 12288;
-        int bytecount;
+        //char buffer[12288];
+        //int buffer_len = 12288;
+        //int bytecount;
         //int errCode = 0;
         //socklen_t addr_size = 0;
         //int* csock;
