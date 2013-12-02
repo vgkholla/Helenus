@@ -327,6 +327,11 @@ class Utility {
             lineno.push_back(atoi((indexes.substr(0,next)).c_str()));
             indexes = indexes.substr(next+1,indexes.length() - next);
         }
+        if(lineno.size() == 0) {
+            indexes = "No Matching Movies Found";
+            return indexes;
+        }
+
         Myfile.open ("top250");
         int linenum = 1;
         indexes = "";
