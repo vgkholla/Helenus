@@ -267,7 +267,7 @@ class Utility {
             }
             if((pos - last_pos) == 1024)
             {
-                //std::size_t length = msg.copy(buffer,pos - last_pos,last_pos);
+                std::size_t length = msg.copy(buffer,pos - last_pos,last_pos);
                 if(send(sock, buffer, strlen(buffer), 0) < 0)
                 {
                         cout << "ERROR: Failed to send file size" << strerror(errno) << endl;
