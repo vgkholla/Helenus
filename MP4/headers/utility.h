@@ -258,7 +258,7 @@ class Utility {
             {
                 std::size_t length = msg.copy(buffer,msg.length(),last_pos);
                 buffer[length]='\0';
-                if(send(sock, buffer, strlen(buffer), 0) < 0)
+                if(send(sock, buffer, buffer_len, 0) < 0)
                 {
                         cout << "ERROR: Failed to send file size" << strerror(errno) << endl;
                         return -1;
@@ -268,7 +268,7 @@ class Utility {
             if((pos - last_pos) == 1024)
             {
                 std::size_t length = msg.copy(buffer,pos - last_pos,last_pos);
-                if(send(sock, buffer, strlen(buffer), 0) < 0)
+                if(send(sock, buffer, buffer_len, 0) < 0)
                 {
                         cout << "ERROR: Failed to send file size" << strerror(errno) << endl;
                         return -1;
@@ -308,7 +308,9 @@ class Utility {
                 return msg;
             }
             else {
-                result+=buffer;
+                for(int i =0 ; buffer[i] != '\0' && i < bytecount; i++) {
+                    result += buffer[i];
+                }
                 rcv += bytecount;
                 memset(buffer, '\0', buffer_len);
             }
