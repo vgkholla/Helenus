@@ -300,7 +300,7 @@ class Utility {
         }
 
         memset(buffer, '\0', buffer_len);
-        while(rcv != size) {
+        while(rcv < size) {
             if((bytecount = recv(sock, buffer, buffer_len, 0)) <= 0)
             {
                 string msg = "Failed to receive reply via socket during data get";
