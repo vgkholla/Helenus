@@ -47,6 +47,7 @@ int main() {
 		KeyValueStoreCommand command = CommandLineTools::parseKeyValueStoreCmd(cmd);
 
 		if(command.isValidCommand()) {
+			cout<<"Consistency level is "<<command.getConsistencyLevel()<<endl;
 			cout<<"Operation is "<<command.getOperation()<<". Key is "<<command.getKey()<< ". Value is "<<command.getValue()<<endl;
 			if(command.getOperation() == INSERT_KEY) {
 				keyValueStore1->insertKeyValue(command.getKey(), command.getValue(), &errCode);

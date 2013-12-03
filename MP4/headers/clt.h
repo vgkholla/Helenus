@@ -44,6 +44,11 @@ using namespace std;
 //other commands
 #define SHOW_KVSTORE "show"
 
+//consistency levels
+#define CONSISTENCY_ONE 'o'
+#define CONSISTENCY_QUORUM 'q'
+#define CONSISTENCY_ALL 'a'
+
 
 
 class KeyValueStoreCommand{
@@ -53,16 +58,18 @@ class KeyValueStoreCommand{
 	string operation;
 	string key;
 	string value;
+	char consistencyLevel;
 
 	public:
 
 	/**
 	 * constructor
 	 */
-	KeyValueStoreCommand(string op, string k, string valueString) {
+	KeyValueStoreCommand(string op, string k, string valueString, char consistency) {
 		operation = op;
 		key = k;
 		value = valueString;
+		consistencyLevel = consistency;
 	}
 
 	string getOperation() {
@@ -75,6 +82,10 @@ class KeyValueStoreCommand{
 
 	string getValue() {
 		return value;
+	}
+
+	char getConsistencyLevel() {
+		return consistencyLevel;
 	}
 
 	int isForceOperation() {
@@ -465,6 +476,20 @@ class CommandLineTools {
 	static KeyValueStoreCommand parseKeyValueStoreCmd(string commandString) {
 		/* command will be of the form operation(key,value)*/
 
+		int startPos = 0;
+		char consistencyLevel = CONSISTENCY_ALL;
+		
+		//find the first '-''
+		size_t firstDashPos = commandString.find_first_of("-");
+		//if the client has specified a consistency level, it will be at exactly position 1 (string starts from 0)
+		if(firstDashPos == 1) {
+			//client has specified a consistency level. Check it is one of the acceptable levels
+			if(commandString.at(0) == CONSISTENCY_ONE || commandString.at(0) == CONSISTENCY_QUORUM) { //all is the default anyway. no need to set
+				consistencyLevel = commandString.at(0);
+			}
+			startPos = 2; //update starting position for rest of the commands
+		}
+
 		string operation = "";
 
 		//find the first bracket. Operation is just before the first bracket
@@ -474,14 +499,14 @@ class CommandLineTools {
 			if(commandString == SHOW_KVSTORE) {
 				operation = SHOW_KVSTORE;
 			}
-			return KeyValueStoreCommand(operation, "", "");
+			return KeyValueStoreCommand(operation, "", "", consistencyLevel);
 		}
 
-		operation = commandString.substr(0, firstBracketPos);
+		operation = commandString.substr(startPos, firstBracketPos - startPos);
 
 		//extract and check operation for validity
 		if(!isValidOperation(operation)) {
-			return KeyValueStoreCommand("", "", "");
+			return KeyValueStoreCommand("", "", "", consistencyLevel);
 		}
 
 		//get the first comma position. Key is just after first bracket and just before first comma
@@ -489,7 +514,7 @@ class CommandLineTools {
 		if(firstCommaPos == string::npos) {
 			//if no comma, then the operation has to be lookup or delete, otherwise bail and report malformed command
 			if(operation == INSERT_KEY || operation == UPDATE_KEY || operation == FORCE_INSERT_KEY || operation == FORCE_UPDATE_KEY) {
-				return KeyValueStoreCommand("", "", "");
+				return KeyValueStoreCommand("", "", "", consistencyLevel);
 			} else {
 				firstCommaPos = commandString.length() - 1;
 			}
@@ -497,14 +522,14 @@ class CommandLineTools {
 
 		//extract the key
 		string key = commandString.substr(firstBracketPos + 1, firstCommaPos - firstBracketPos - 1);
-		
+
 		string value;
 		//find the last bracket. value is between first comma and last close bracket
 		if(operation == INSERT_KEY || operation == UPDATE_KEY || operation == FORCE_INSERT_KEY || operation == FORCE_UPDATE_KEY) {
 			size_t lastBracketPos = commandString.find_last_of(")");
 			//if no last bracket, bail and report malformed command
 			if(lastBracketPos == string::npos) {
-				return KeyValueStoreCommand("", "", "");
+				return KeyValueStoreCommand("", "", "", consistencyLevel);
 			}
 
 			//extract the value
@@ -514,7 +539,7 @@ class CommandLineTools {
 		}
 
 		//return an object with the operation, key and value for easy access
-		return KeyValueStoreCommand(operation, key, value);
+		return KeyValueStoreCommand(operation, key, value, consistencyLevel);
 	}
 
 
