@@ -595,24 +595,6 @@ class MembershipList {
     	return requiredMachine;
     }
 
-    string getIPAtDistance(int distance) {
-    	string ip = "";
-   		map<int,string>::iterator requiredMachine = getMachineAtDistance(distance);
-   		if(requiredMachine != keyToIPMap.end()) {
-   			ip = requiredMachine->second;
-   		}
-   		return ip;
-    }
-
-    int getHashAtDistance(int distance) {
-   		int hash = -1;
-   		map<int,string>::iterator requiredMachine = getMachineAtDistance(distance);
-   		if(requiredMachine != keyToIPMap.end()) {
-   			hash = requiredMachine->first;
-   		}
-   		return hash;
-    }
-
     int isFirstReplica(int nodeHash) {
     	return nodeHash == getHashAtDistance(1);
     }
@@ -826,6 +808,24 @@ class MembershipList {
     }
 
     /*** position public interfaces **/
+
+    string getIPAtDistance(int distance) {
+    	string ip = "";
+   		map<int,string>::iterator requiredMachine = getMachineAtDistance(distance);
+   		if(requiredMachine != keyToIPMap.end()) {
+   			ip = requiredMachine->second;
+   		}
+   		return ip;
+    }
+
+    int getHashAtDistance(int distance) {
+   		int hash = -1;
+   		map<int,string>::iterator requiredMachine = getMachineAtDistance(distance);
+   		if(requiredMachine != keyToIPMap.end()) {
+   			hash = requiredMachine->first;
+   		}
+   		return hash;
+    }
 
     string getIPofFirstPredecessor() {
     	return getIPAtDistance(-1);

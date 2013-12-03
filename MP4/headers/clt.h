@@ -545,6 +545,18 @@ class CommandLineTools {
 
 	/***********************************************************************************/
 
+	static string getForceCommand(string commandString) {
+		//find the first '-''
+		size_t firstDashPos = commandString.find_first_of("-");
+		//if the client has specified a consistency level, it will be at exactly position 1 (string starts from 0)
+		if(firstDashPos == 1) {
+			//client has specified a consistency level. Strip it
+			commandString = commandString.substr(2, commandString.length() - 2);
+		}
+
+		return "f" + commandString;
+	}
+
 };
 
 #endif

@@ -247,7 +247,7 @@ void* ConnectionHandler::updateKeyValue(void* lp)
         int consistentReplicas = 1;
         string replicaMsg;
         if(command.getOperation() != SHOW_KVSTORE && command.isNormalOperation()) {
-            replicaMsg = ConnectionHandler::sendForceOperations(received, ptr1->getMemPtr(), &replicaExists, &consistentReplicas);
+            replicaMsg = ConnectionHandler::sendForceOperations(received, ptr1->getMemPtr(), command.getConsistencyLevel(), &replicaExists, &consistentReplicas);
         }
 
         msg = ConnectionHandler::performOperationLocally(command, ptr1->getKeyValuePtr(), ptr1->getMemPtr());
@@ -280,31 +280,71 @@ void* ConnectionHandler::updateKeyValue(void* lp)
     pthread_exit(NULL);
 }
 
-string ConnectionHandler::sendForceOperations(string command, MembershipList *memList, int *replicaExists, int *consistentReplicas) {
-    command = "f" + command;
-    
+string ConnectionHandler::sendForceOperations(string command, MembershipList *memList, char consistencyLevel, int *replicaExists, int *consistentReplicas) {
+    command = CommandLineTools::getForceCommand(command);
+    string ips[2];
+    ReplicationDetails *details[2];
+    int twoReplicasExist = 1;
+
+    pthread_t thread[2];
+    pthread_attr_t attr;    
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+    void *status;
+    int failure;
+
+    for (int i = 0 ; i < 2; i++) {
+        ips[i] = memList->getIPAtDistance(i + 1);
+        details[i] = new ReplicationDetails(ips[i], command);
+        
+        if(ips[i] != "") {
+            *replicaExists = 1;
+        } else {
+            twoReplicasExist = 0;
+        }
+        
+        failure = pthread_create(&thread[i], &attr, &sendForceCommand, (void *) details[i]);
+        if(failure) {
+            cout<<"Failed to create force command thread to replica "<<i + 1<<endl;
+        }
+    }
+    pthread_attr_destroy(&attr);
+
     string replyFromFirstReplica = "";
     string replyFromSecondReplica = "";
-    string firstReplicaIP = memList->getIPofFirstReplica();
-    if(firstReplicaIP != "") {
-        *replicaExists = 1;
-        
-        replyFromFirstReplica = Utility::tcpConnectSocket(firstReplicaIP,SERVER_PORT,command);
-
-        string secondReplicaIP = memList->getIPofSecondReplica();
-        if(secondReplicaIP != "") {
-            replyFromSecondReplica = Utility::tcpConnectSocket(secondReplicaIP,SERVER_PORT,command);
-        } else {
-            replyFromSecondReplica = replyFromFirstReplica;
+    for(int i = 0; i < 2; i++) {
+        failure = pthread_join(thread[i], &status);
+        if(failure) {
+            cout<<"Thread failed to join during force command sending"<<endl;
+        }
+        else {
+            if(i == 0) {
+                replyFromFirstReplica = details[i]->getResult();
+            } else {
+                replyFromSecondReplica = details[i]->getResult();
+            }
         }
     }
 
-    if(replyFromFirstReplica != replyFromSecondReplica) {
+    if(twoReplicasExist && replyFromFirstReplica != replyFromSecondReplica) {
         *consistentReplicas = 0;
     }
 
     return replyFromFirstReplica;
 
+}
+
+void* ConnectionHandler::sendForceCommand(void* detailsVoid) {
+    ReplicationDetails *details = static_cast<ReplicationDetails*>(detailsVoid);
+    string ip = details->getIP();
+    string command = details->getCommand();
+
+    if(ip != "") {
+        string result = Utility::tcpConnectSocket(ip,SERVER_PORT,command);
+        details->setResult(result);
+    }
+
+    pthread_exit(0);
 }
 
 string ConnectionHandler::performOperationLocally(KeyValueStoreCommand command, KeyValueStore *kvStore, MembershipList *memList) {

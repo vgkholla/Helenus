@@ -69,6 +69,7 @@ int main() {
 				cout<<keyValueStore1->forceLookupKey(command.getKey(), &errCode)<<endl;
 			}
 			
+			cout<<CommandLineTools::getForceCommand(cmd)<<endl;;
 		} else {
 			cout<<"Malformed command!"<<endl;
 		}

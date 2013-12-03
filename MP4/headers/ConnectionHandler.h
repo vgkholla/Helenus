@@ -36,6 +36,35 @@ namespace P2P
         MembershipList *mPtr;
     } mystruct;
 
+    class ReplicationDetails { 
+        string ip;
+        string command;
+        string result;
+
+        public:
+            ReplicationDetails(string ipString, string commandString) {
+                ip = ipString;
+                command = commandString;
+                result = "";
+            }
+
+            string getIP() {
+                return ip;
+            }
+
+            string getCommand() {
+                return command;
+            }
+
+            string getResult() {
+                return result;
+            }
+
+            void setResult(string resultString) {
+                result = resultString;
+            }
+    };
+
     class ConnectionHandler: public Timer
     {
         private:
@@ -126,7 +155,7 @@ namespace P2P
 
             /**Key value store manipulators*/
             static void* updateKeyValue(void *lp);
-            static string sendForceOperations(string command, MembershipList *memList, int *replicaExists, int *consistentReplicas);
+            static string sendForceOperations(string command, MembershipList *memList, char consistencyLevel, int *replicaExists, int *consistentReplicas);
             static string performOperationLocally(KeyValueStoreCommand command, KeyValueStore *kvStore, MembershipList *memList);
   
             /**event handlers*/
@@ -151,6 +180,9 @@ namespace P2P
             
             /* Signal handler */
             static void sendLeaveMsg(int signal);
+
+            /*Command sending to replicas*/
+            static void* sendForceCommand(void *detailsVoid);
 
         protected:
             /* Call back funtion called when timer expires */
