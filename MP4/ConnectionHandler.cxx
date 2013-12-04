@@ -154,6 +154,23 @@ void* ConnectionHandler::showCommandPrompt(void* lp)
             msg += "Membership list:\n";
             msg += ptr1->getMemPtr()->getkeyToIPMapDetails();
             cout << msg << endl;
+            ptr1->getKeyValuePtr()->showCachedEntries();
+/*
+            cout << "Last 10 Reads" << endl;
+            cout << "Size of list " << ptr1->getKeyValuePtr()->keyToValueReadCache.size() << endl;
+            for(list<string>::iterator cacheitr = ptr1->getKeyValuePtr()->keyToValueReadCache.begin();
+                cacheitr != ptr1->getKeyValuePtr()->keyToValueReadCache.end();
+                cacheitr++) {
+                cout << *cacheitr << endl;
+            }
+            cout << "Last 10 Writes" << endl;
+            cout << "Size of list " << ptr1->getKeyValuePtr()->keyToValueWriteCache.size() << endl;
+            for(list<string>::iterator cacheitr = ptr1->getKeyValuePtr()->keyToValueWriteCache.begin();
+                cacheitr != ptr1->getKeyValuePtr()->keyToValueWriteCache.end();
+                cacheitr++) {
+                cout << *cacheitr << endl;
+            }
+*/
         } else {
             cout<<"Malformed command!"<<endl;
         }
@@ -351,6 +368,7 @@ string ConnectionHandler::performOperationLocally(KeyValueStoreCommand command, 
 
         int errCode = 0;
         int status = SUCCESS;
+        string cacheEntry;
         
         string msg = "";
         string operation = command.getOperation();
@@ -379,6 +397,28 @@ string ConnectionHandler::performOperationLocally(KeyValueStoreCommand command, 
             msg += kvStore->returnAllEntries(&errCode);
             msg += "Membership list:\n";
             msg += memList->getkeyToIPMapDetails();
+        }
+        if(operation == INSERT_KEY || 
+           operation == FORCE_INSERT_KEY || 
+           operation == UPDATE_KEY || 
+           operation == FORCE_UPDATE_KEY) {
+           cacheEntry = "key: ";
+           cacheEntry += key;
+           cacheEntry += " Value: ";
+           cacheEntry += value;
+           kvStore->keyToValueWriteCache.push_front(cacheEntry);
+           if(kvStore->keyToValueWriteCache.size() > 10)
+               kvStore->keyToValueWriteCache.pop_back();
+        }
+        if(operation == LOOKUP_KEY ||
+           operation == FORCE_LOOKUP_KEY) {
+           cacheEntry = "key: ";
+           cacheEntry += key;
+           cacheEntry += " Value: ";
+           cacheEntry += msg;
+           kvStore->keyToValueReadCache.push_front(cacheEntry);
+           if(kvStore->keyToValueReadCache.size() > 10)
+               kvStore->keyToValueReadCache.pop_back();
         }
 
         if(operation != LOOKUP_KEY && operation != FORCE_LOOKUP_KEY && operation != SHOW_KVSTORE) {

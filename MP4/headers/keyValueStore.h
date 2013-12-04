@@ -5,6 +5,8 @@
 #include <string>
 #include <ctime>
 #include <vector>
+#include <map>
+#include <list>
 
 #include <boost/serialization/vector.hpp>
 #include <boost/archive/text_oarchive.hpp>
@@ -368,6 +370,10 @@ class KeyValueStore {
 
 
 	public:
+
+        list<string> keyToValueWriteCache;
+        list<string> keyToValueReadCache;
+
 	/**
 	 * Constructor. Supply ID of machine which will own the key value store and the logger object of the machine
 	 */
@@ -643,6 +649,30 @@ class KeyValueStore {
 
 		return commands;
 	}
+
+        void showCachedEntries() {
+                list<string>::iterator cacheitr;
+                if(keyToValueReadCache.size() == 0)
+                        cout << "Read Cache Empty " << endl;
+                else {
+			cout << "Last 10 Reads" << endl;
+                	for(cacheitr = keyToValueReadCache.begin();
+                	    cacheitr != keyToValueReadCache.end();
+                	    cacheitr++) {
+                        	cout << *cacheitr << endl;
+                	}
+                }
+                if(keyToValueWriteCache.size() == 0)
+                        cout << endl << "Write Cache Empty " << endl;
+                else {
+                	cout << endl << "Last 10 Writes" << endl;
+                	for(cacheitr = keyToValueWriteCache.begin();
+                	    cacheitr != keyToValueWriteCache.end();
+                	    cacheitr++) {
+                	        cout << *cacheitr << endl;
+                	}
+                }
+        }
 
 };
 
