@@ -767,7 +767,7 @@ void ConnectionHandler::handleFailOrLeaveEventAsPredecessor(Message message, Key
     int errCode = 0;
     vector<string> commands = kvStore->getCommandsToReplicateOwnedKeys(&errCode);
 
-    string newSecondReplicaIP = memList->getIPofSecondReplica();
+    string newSecondReplicaIP = message.getNewSecondReplicaIP();
     if(newSecondReplicaIP != "") {
         cout << "Replicating my owned keys in a another node in the system with IP " 
              << newSecondReplicaIP 

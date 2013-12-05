@@ -30,15 +30,21 @@ class Message {
 	//for failure
 	int failedMemberHash;//if reason is failure, the hash of the machine that failed
 	int newOwnedKeysRangeStart; //what new keys does a successor own now?
+	string newSecondReplicaIP; //the IP of the new second replica
 
 	public:
 	Message() {
 		reason = "";
+		role = "";
 
 		newMemberHash = -1;
 		newMachineOwnedRangeStart = -1;
+		deleteKeysRangeStart = -1;
+		deleteKeysRangeEnd = -1;
 
 		failedMemberHash = -1;
+		newOwnedKeysRangeStart = -1;
+		newSecondReplicaIP = "";
 	}
 
 	//getters
@@ -85,6 +91,10 @@ class Message {
 		return getFailedMemberHash();
 	}
 
+	string getNewSecondReplicaIP() {
+		return newSecondReplicaIP;
+	}
+
 	//setters
 	//general
 	void setReason(string reasonString) {
@@ -119,6 +129,10 @@ class Message {
 
 	void setNewOwnedKeysRangeStart(int hash) {
 		newOwnedKeysRangeStart = hash;
+	}
+
+	void setNewSecondReplicaIP(string ip) {
+		newSecondReplicaIP = ip;
 	}
 
 };

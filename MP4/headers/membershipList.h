@@ -553,6 +553,8 @@ class MembershipList {
         	coordinator->pushMessage(message);
     	} else if (isFirstReplica(nodeHash) || isSecondReplica(nodeHash)) {
     		message.setRole(ROLE_PREDECESSOR);
+    		string newSecondReplicaIP = getIPAtDistance(3);
+    		message.setNewSecondReplicaIP(newSecondReplicaIP);
     		//nothing else to do here. the predecessor is just expected to pick up his own keys and replicate them
     		//store it in the coordinator
         	coordinator->pushMessage(message);
