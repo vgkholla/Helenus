@@ -41,11 +41,17 @@ namespace P2P
         string command;
         string result;
 
+        pthread_mutex_t *replyMutex;
+        pthread_cond_t *replyReady;
+        
         public:
-            ReplicationDetails(string ipString, string commandString) {
+            ReplicationDetails(string ipString, string commandString, pthread_mutex_t *reply, pthread_cond_t *ready) {
                 ip = ipString;
                 command = commandString;
                 result = "";
+
+                replyMutex = reply;
+                replyReady = ready;
             }
 
             string getIP() {
@@ -58,6 +64,14 @@ namespace P2P
 
             string getResult() {
                 return result;
+            }
+
+            pthread_mutex_t* getMutex() {
+                return replyMutex;
+            }
+
+            pthread_cond_t* getCondition() {
+                return replyReady;
             }
 
             void setResult(string resultString) {

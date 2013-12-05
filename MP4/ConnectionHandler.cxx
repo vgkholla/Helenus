@@ -251,7 +251,7 @@ void* ConnectionHandler::updateKeyValue(void* lp)
         }
 
         msg = ConnectionHandler::performOperationLocally(command, ptr1->getKeyValuePtr(), ptr1->getMemPtr());
-        if(msg != "Command failed" && replicaExists && (!consistentReplicas || msg != replicaMsg)) {
+        if(command.getConsistencyLevel() != CONSISTENCY_ONE && msg != "Command failed" && replicaExists && (!consistentReplicas || msg != replicaMsg)) {
             msg = "Agreement Failure";
         }
     }    
@@ -284,66 +284,104 @@ string ConnectionHandler::sendForceOperations(string command, MembershipList *me
     command = CommandLineTools::getForceCommand(command);
     string ips[2];
     ReplicationDetails *details[2];
+    
+
     int twoReplicasExist = 1;
+    void *status;
+    int failure;
+    int threadCount = 0;
 
     pthread_t thread[2];
     pthread_attr_t attr;    
     pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-    void *status;
-    int failure;
+    pthread_mutex_t *replyMutex = new pthread_mutex_t();
+    pthread_cond_t *replyReady = new pthread_cond_t();
+    
+    pthread_mutex_init(replyMutex, NULL);
+    pthread_cond_init(replyReady, NULL);
+
+    if(consistencyLevel == CONSISTENCY_ALL) {
+        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+    } else {
+        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+    }
 
     for (int i = 0 ; i < 2; i++) {
         ips[i] = memList->getIPAtDistance(i + 1);
-        details[i] = new ReplicationDetails(ips[i], command);
+        details[i] = new ReplicationDetails(ips[i], command, replyMutex, replyReady);
         
         if(ips[i] != "") {
             *replicaExists = 1;
+            failure = pthread_create(&thread[i], &attr, &sendForceCommand, (void *) details[i]);
+            if(failure) {
+                cout<<"Failed to create force command thread to replica "<<i + 1<<endl;
+            } else {
+                threadCount++;
+            }
         } else {
             twoReplicasExist = 0;
-        }
-        
-        failure = pthread_create(&thread[i], &attr, &sendForceCommand, (void *) details[i]);
-        if(failure) {
-            cout<<"Failed to create force command thread to replica "<<i + 1<<endl;
         }
     }
     pthread_attr_destroy(&attr);
 
     string replyFromFirstReplica = "";
     string replyFromSecondReplica = "";
-    for(int i = 0; i < 2; i++) {
-        failure = pthread_join(thread[i], &status);
-        if(failure) {
-            cout<<"Thread failed to join during force command sending"<<endl;
-        }
-        else {
-            if(i == 0) {
-                replyFromFirstReplica = details[i]->getResult();
-            } else {
-                replyFromSecondReplica = details[i]->getResult();
-            }
-        }
-    }
 
-    if(twoReplicasExist && replyFromFirstReplica != replyFromSecondReplica) {
-        *consistentReplicas = 0;
+    if(consistencyLevel != CONSISTENCY_ONE) {
+        if(consistencyLevel == CONSISTENCY_ALL) {
+            for(int i = 0; i < threadCount; i++) {
+                failure = pthread_join(thread[i], &status);
+                if(failure) {
+                    cout<<"Thread failed to join during force command sending"<<endl;
+                }
+                else {
+                    if(i == 0) {
+                        replyFromFirstReplica = details[i]->getResult();
+                    } else {
+                        replyFromSecondReplica = details[i]->getResult();
+                    }
+                }
+            }
+
+            if(twoReplicasExist && replyFromFirstReplica != replyFromSecondReplica) {
+                *consistentReplicas = 0;
+            }
+
+        } else if(*replicaExists){
+            pthread_mutex_lock(replyMutex);
+            pthread_cond_wait(replyReady, replyMutex);
+            for(int i = 0; i < threadCount; i++) {
+                if(details[i]->getResult() != "") {
+                    replyFromFirstReplica = details[i]->getResult();
+                }
+            }
+
+            pthread_mutex_unlock(replyMutex);
+        }
+
     }
 
     return replyFromFirstReplica;
-
 }
 
 void* ConnectionHandler::sendForceCommand(void* detailsVoid) {
     ReplicationDetails *details = static_cast<ReplicationDetails*>(detailsVoid);
     string ip = details->getIP();
     string command = details->getCommand();
+    pthread_mutex_t *replyMutex = details->getMutex();
+    pthread_cond_t *replyReady = details->getCondition();
 
+    string result = "";
     if(ip != "") {
-        string result = Utility::tcpConnectSocket(ip,SERVER_PORT,command);
-        details->setResult(result);
+        result = Utility::tcpConnectSocket(ip,SERVER_PORT,command);
     }
 
+    pthread_mutex_lock(replyMutex);
+    details->setResult(result);
+    
+    pthread_cond_signal(replyReady);
+    pthread_mutex_unlock(replyMutex);
+    
     pthread_exit(0);
 }
 
@@ -385,7 +423,7 @@ string ConnectionHandler::performOperationLocally(KeyValueStoreCommand command, 
             msg = status == SUCCESS ? "Command succeeded" : "Command failed";
         }
         else {
-            msg = Utility::findMovies(msg);
+            //msg = Utility::findMovies(msg);
         }
 
         return msg;
