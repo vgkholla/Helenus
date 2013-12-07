@@ -599,28 +599,12 @@ void ConnectionHandler::sendMemberList(vector<string> memberIPs)
     	if(!leave) {
             this->getMemPtr()->processList(&errorcode);
     	}
-        /* Check if there are any new messages in the coordinator */
-        Coordinator *coord = this->getCoordinatorPtr();
-        while(coord->hasMessage())
-        {
-            KeyValueStore *kvStore = this->getKeyValuePtr();
-            MembershipList *memList = this->getMemPtr();
 
-            Message message = coord->popMessage();
-            if(message.getReason() == REASON_JOIN) {
-              ConnectionHandler::handleJoinEvent(message, kvStore, memList);
-            } else if (message.getReason() == REASON_FAILURE){
-                ConnectionHandler::handleFailOrLeaveEvent(message, kvStore, memList);
-            } else {
-                string msg = "Did not recognize the message reason: '" + message.getReason() + "'";
-                logger->logError(UNRECOGNIZED_MESSAGE_REASON, msg, &errorcode);
-            }
-        }
         /* If time exceeds the time to cleanup exit the process */
-    	if(leave && 
+        if(leave && 
            ((time(0) - leaveTimeStamp) > this->getMemPtr()->timeToCleanupInSeconds())) {
            ConnectionHandler::handleLeaveEvent(logger, this->getKeyValuePtr(), this->getMemPtr());
-    	}
+        }
 
         try
         {
@@ -670,6 +654,24 @@ void ConnectionHandler::sendMemberList(vector<string> memberIPs)
             string msg = "Failed to serialize";
             int errCode = 0;
             logger->logError(SERIALIZATION_ERROR, msg , &errCode);
+        }
+
+        /* Check if there are any new messages in the coordinator */
+        Coordinator *coord = this->getCoordinatorPtr();
+        while(coord->hasMessage())
+        {
+            KeyValueStore *kvStore = this->getKeyValuePtr();
+            MembershipList *memList = this->getMemPtr();
+
+            Message message = coord->popMessage();
+            if(message.getReason() == REASON_JOIN) {
+              ConnectionHandler::handleJoinEvent(message, kvStore, memList);
+            } else if (message.getReason() == REASON_FAILURE){
+                ConnectionHandler::handleFailOrLeaveEvent(message, kvStore, memList);
+            } else {
+                string msg = "Did not recognize the message reason: '" + message.getReason() + "'";
+                logger->logError(UNRECOGNIZED_MESSAGE_REASON, msg, &errorcode);
+            }
         }
     }
 }
