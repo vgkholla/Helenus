@@ -19,5 +19,5 @@ do
     echo $key
     echo $value
     ./$CLIENT_BINARY --dst $DEST_ADDR --port $DEST_PORT --command insert\($key,$value\)
-done < /home/aloktiagi/ds-mps/MP4/indexes1000.txt
+done < /home/hollava2/Documents/Fall2013/DS/ds-mps/MP4/indexes1000.txt
 

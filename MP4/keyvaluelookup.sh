@@ -14,5 +14,4 @@ do
     #key=`cut -f 1 -d ':' t`
     echo "Key is $key"
     ./$CLIENT_BINARY --dst $DEST_ADDR --port $DEST_PORT --command lookup\($key\)
-done < /Users/Holla/Dropbox/Masters/MCS/Fall2013/CS425-DistributedSystems/ds-mps/MP4/indexes250.txt
-
+done < /home/hollava2/Documents/Fall2013/DS/ds-mps/MP4/indexes1000.txt
