@@ -21,5 +21,5 @@ do
         time2=`date +'%d/%m/%Y_%H:%M:%S:%N' | cut -d ':' -f 4`
         lookupt=`expr $time2 - $time1`
         lookupms=`expr $lookupt / 1000000`
-        echo $lookupms >> file1
+        echo $lookupms >> file2
 done

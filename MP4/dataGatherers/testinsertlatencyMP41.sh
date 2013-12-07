@@ -15,11 +15,12 @@ do
 done
 for i in {1..100}
 do
+        VALUE=$RANDOM
         echo ${array[$i]}
         time1=`date +'%d/%m/%Y_%H:%M:%S:%N' | cut -d ':' -f 4`
-        ./$CLIENT_BINARY --dst $DEST_ADDR --port $DEST_PORT --command $CONSISTENCY-lookup\(${array[$i]}\)
+        ./$CLIENT_BINARY --dst $DEST_ADDR --port $DEST_PORT --command $CONSISTENCY-update\(${array[$i]},$VALUE\)
         time2=`date +'%d/%m/%Y_%H:%M:%S:%N' | cut -d ':' -f 4`
-        lookupt=`expr $time2 - $time1`
-        lookupms=`expr $lookupt / 1000000`
-        echo $lookupms >> file1
+        updatet=`expr $time2 - $time1`
+        updatems=`expr $updatet / 1000000`
+        echo $updatems >> file2
 done
