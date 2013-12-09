@@ -334,7 +334,7 @@ class Utility {
             return indexes;
         }
 
-        Myfile.open ("top1000");
+        Myfile.open ("top2000");
         int linenum = 1;
         indexes = "";
         if(Myfile.is_open())
