@@ -61,7 +61,8 @@ int main(int argc,
     
     string wordToSend;
     if(word == "") {
-        wordToSend = CommandLineTools::showAndHandlePrompt("1");
+        cout<<"******************Movie search application**********************"<<endl<<endl;
+        wordToSend = CommandLineTools::showAndHandlePrompt("Enter word to search: ");
     } else {
         wordToSend = word;
     }
@@ -73,7 +74,7 @@ int main(int argc,
 
 	    cout << msg << endl;
         if(word == "") {
-            wordToSend = CommandLineTools::showAndHandlePrompt("1");
+            wordToSend = CommandLineTools::showAndHandlePrompt("Enter word to search: ");
         } else {
             wordToSend = "@exit";
         }
