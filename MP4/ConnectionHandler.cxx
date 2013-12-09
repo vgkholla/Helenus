@@ -264,10 +264,13 @@ void* ConnectionHandler::updateKeyValue(void* lp)
         int consistentReplicas = 1;
         string replicaMsg;
         if(command.getOperation() != SHOW_KVSTORE && command.isNormalOperation()) {
+            //send force commands
             replicaMsg = ConnectionHandler::sendForceOperations(received, ptr1->getMemPtr(), command.getConsistencyLevel(), &replicaExists, &consistentReplicas);
         }
 
+        //perform operation on local store
         msg = ConnectionHandler::performOperationLocally(command, ptr1->getKeyValuePtr(), ptr1->getMemPtr());
+        //check consistency
         if(command.getConsistencyLevel() != CONSISTENCY_ONE && msg != "Command failed" && replicaExists && (!consistentReplicas || msg != replicaMsg)) {
             msg = "Agreement Failure";
         }
@@ -281,6 +284,7 @@ void* ConnectionHandler::updateKeyValue(void* lp)
             /*cout << "Key hash higher than my Node Hash.. Connecting to the right node with ip"
                  << ip
                  << endl;*/
+            //try to contact owner machine, if it fails to connect back off, wait and try again
             msg = Utility::tcpConnectSocket(ip,SERVER_PORT,received);
             if(msg == "Failed to Connect") {
                 ip = ptr1->getMemPtr()->getIPToSendToFromKeyHash(hash);
@@ -298,6 +302,7 @@ void* ConnectionHandler::updateKeyValue(void* lp)
 }
 
 string ConnectionHandler::sendForceOperations(string command, MembershipList *memList, char consistencyLevel, int *replicaExists, int *consistentReplicas) {
+    //get the force command
     command = CommandLineTools::getForceCommand(command);
     string ips[2];
     ReplicationDetails *details[2];
@@ -308,6 +313,7 @@ string ConnectionHandler::sendForceOperations(string command, MembershipList *me
     int failure;
     int threadCount = 0;
 
+    //thread handlers
     pthread_t thread[2];
     pthread_attr_t attr;    
     pthread_attr_init(&attr);
@@ -318,12 +324,15 @@ string ConnectionHandler::sendForceOperations(string command, MembershipList *me
     pthread_cond_init(replyReady, NULL);
 
     if(consistencyLevel == CONSISTENCY_ALL) {
+        //we need both thread to join back
         pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
     } else {
+        //need at most one to join back
         pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
     }
 
     for (int i = 0 ; i < 2; i++) {
+        //get the details of each replica and thread the requests
         ips[i] = memList->getIPAtDistance(i + 1);
         details[i] = new ReplicationDetails(ips[i], command, replyMutex, replyReady);
         
@@ -344,8 +353,10 @@ string ConnectionHandler::sendForceOperations(string command, MembershipList *me
     string replyFromFirstReplica = "";
     string replyFromSecondReplica = "";
 
+    //wait for the specified number of thread to join back (if consistency is ONE, no need to wait at all)
     if(consistencyLevel != CONSISTENCY_ONE) {
         if(consistencyLevel == CONSISTENCY_ALL) {
+            //need to wait for both threads
             for(int i = 0; i < threadCount; i++) {
                 failure = pthread_join(thread[i], &status);
                 if(failure) {
@@ -365,8 +376,10 @@ string ConnectionHandler::sendForceOperations(string command, MembershipList *me
             }
 
         } else if(*replicaExists){
+            //need to wait for exactly one thread. sleep and wait for the wakeup call
             pthread_mutex_lock(replyMutex);
             pthread_cond_wait(replyReady, replyMutex);
+            //wake up and examine the results to see if you have a reply
             for(int i = 0; i < threadCount; i++) {
                 if(details[i]->getResult() != "") {
                     replyFromFirstReplica = details[i]->getResult();
@@ -382,6 +395,7 @@ string ConnectionHandler::sendForceOperations(string command, MembershipList *me
 }
 
 void* ConnectionHandler::sendForceCommand(void* detailsVoid) {
+    //contact the replica and get back a reply based on details provided
     ReplicationDetails *details = static_cast<ReplicationDetails*>(detailsVoid);
     string ip = details->getIP();
     string command = details->getCommand();
@@ -393,9 +407,11 @@ void* ConnectionHandler::sendForceCommand(void* detailsVoid) {
         result = Utility::tcpConnectSocket(ip,SERVER_PORT,command);
     }
 
+    //store the repy
     pthread_mutex_lock(replyMutex);
     details->setResult(result);
     
+    //wake up the main thread
     pthread_cond_signal(replyReady);
     pthread_mutex_unlock(replyMutex);
     
@@ -404,6 +420,8 @@ void* ConnectionHandler::sendForceCommand(void* detailsVoid) {
 
 string ConnectionHandler::performOperationLocally(KeyValueStoreCommand command, KeyValueStore *kvStore, MembershipList *memList) {
 
+        //perform key value operation locally
+        
         int errCode = 0;
         int status = SUCCESS;
         string cacheEntry;
@@ -436,6 +454,7 @@ string ConnectionHandler::performOperationLocally(KeyValueStoreCommand command, 
             msg += "Membership list:\n";
             msg += memList->getkeyToIPMapDetails();
         }
+        //record reads or writes
         if(operation == INSERT_KEY || 
            operation == FORCE_INSERT_KEY || 
            operation == UPDATE_KEY || 
@@ -463,6 +482,7 @@ string ConnectionHandler::performOperationLocally(KeyValueStoreCommand command, 
             msg = status == SUCCESS ? "Command succeeded" : "Command failed";
         }
         else {
+            //translate value to actual movies
             msg = Utility::findMovies(msg);
         }
 
@@ -688,6 +708,7 @@ void ConnectionHandler::handleJoinEvent(Message message, KeyValueStore *kvStore,
 } 
 
 void ConnectionHandler::handleJoinEventAsPredecessor(Message message, KeyValueStore *kvStore, MembershipList *memList) {
+    //replicate keys on new machine
     int errCode = 0;
     vector<string> commands = kvStore->getCommandsToReplicateOwnedKeys(&errCode);
 
@@ -706,6 +727,7 @@ void ConnectionHandler::handleJoinEventAsPredecessor(Message message, KeyValueSt
 }
 
 void ConnectionHandler::handleJoinEventAsSuccessor(Message message, KeyValueStore *kvStore, MembershipList *memList) {
+    //transfer owned keys to new machine, delete the keys in second replica and delete any keys this machine is no longer replica for
     int errCode = 0;
     
     int newMachineOwnedRangeStart = message.getNewMachineOwnedRangeStart();
@@ -766,6 +788,7 @@ void ConnectionHandler::handleFailOrLeaveEvent(Message message, KeyValueStore *k
 } 
 
 void ConnectionHandler::handleFailOrLeaveEventAsPredecessor(Message message, KeyValueStore *kvStore, MembershipList *memList) {
+    //replicate keys in a new machine because a replica has just been lost
     int errCode = 0;
     vector<string> commands = kvStore->getCommandsToReplicateOwnedKeys(&errCode);
 
@@ -785,6 +808,7 @@ void ConnectionHandler::handleFailOrLeaveEventAsPredecessor(Message message, Key
 }
 
 void ConnectionHandler::handleFailOrLeaveEventAsSuccessor(Message message, KeyValueStore *kvStore, MembershipList *memList) {
+    //mark some new keys as owned and store the values in replicas also
     int errCode = 0;
     
     int newOwnedKeysRangeStart = message.getNewOwnedKeysRangeStart();

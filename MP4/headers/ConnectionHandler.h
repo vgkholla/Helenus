@@ -36,6 +36,11 @@ namespace P2P
         MembershipList *mPtr;
     } mystruct;
 
+    /**
+     * Replication details
+     * Stores ip of replica, command to send to replica and the result that is returned from replica
+     * Also stores some thread handling variables
+     */
     class ReplicationDetails { 
         string ip;
         string command;
@@ -178,7 +183,7 @@ namespace P2P
             static void handleJoinEventAsPredecessor(Message message, KeyValueStore *kvStore, MembershipList *memList);
             static void handleJoinEventAsSuccessor(Message message, KeyValueStore *kvStore, MembershipList *memList);
 
-            //fail
+            //fail/leave
             static void handleFailOrLeaveEvent(Message message, KeyValueStore *kvStore, MembershipList *memList);
             static void handleFailOrLeaveEventAsPredecessor(Message message, KeyValueStore *kvStore, MembershipList *memList);
             static void handleFailOrLeaveEventAsSuccessor(Message message, KeyValueStore *kvStore, MembershipList *memList);

@@ -73,11 +73,18 @@ class Value {
 		return value;
 	}
 
-
+	/**
+	 * [is this store the owner of the key-value pair]
+	 * @return [is owner]
+	 */
 	int isOwner() {
 		return owned == 1;
 	}
 
+	/**
+	 * [is this key value store the replica of the key value pair]
+	 * @return [is replica]
+	 */
 	int isReplica() {
 		return owned == 0;
 	}
@@ -119,6 +126,7 @@ class KeyValueStore {
 	 * [inserts a key into the key value store]
 	 * @param  key         [the key]
 	 * @param  valueString [the value]
+	 * @param  owned 	   [is this supposed to inserted as an owned key?]
 	 * @param  errCode     [place to store errors]
 	 * @return             [status of insert]
 	 */
@@ -227,7 +235,7 @@ class KeyValueStore {
 	/**
 	 * [private lookup function that can be optionally asked to suppress errors]
 	 * @param  key           [key to lookup]
-	 * @param  errCode       [place tp store error codes if any]
+	 * @param  errCode       [place to store error codes if any]
 	 * @param  suppressError [if true, doesn't log an errors]
 	 * @return               [the iterator in the hash map which points to the key]
 	 */
@@ -342,6 +350,12 @@ class KeyValueStore {
 		return keys;
 	}
 
+	/**
+	 * [changes replicated key to owned key]
+	 * @param  key     [the key]
+	 * @param  errCode [place to store error]
+	 * @return         [status of request]
+	 */
 	int changeKeyToOwned(string key, int *errCode) {
 		//check for preexisting error
 		int status = checkForPreExistingError(errCode, __func__);
@@ -534,9 +548,12 @@ class KeyValueStore {
 
 	/**********************************JOIN HANDLING FUNCTIONS***************************************/
 	/**
-	 *	[builds commands for keys to be sent when a machine joins]
-	 * @param  errCode 	 [space to store error code]
-	 * @return           [the built commands]
+	 * [builds commands for keys to be sent when a machine joins]
+	 * @param  rangeStart 	 		[new machine owned range start]
+	 * @param  rangeEnd 	 		[new machine owned range end]
+	 * @param  deleteCommands 	 	[space to store delete commands that get sent to replica]
+	 * @param  errCode 	 			[space to store error code]
+	 * @return           			[the built commands]
 	 */
 	vector<string> getCommandsToTransferOwnedKeysAtJoin(int rangeStart, int rangeEnd, vector<string> *deleteCommands, int *errCode) {
 		vector <string>commands;
@@ -574,6 +591,13 @@ class KeyValueStore {
 		return commands;
 	} 
 
+	/**
+	 * [deletes any extra replicated keys]
+	 * @param  deleteRangeStart [range start]
+	 * @param  deleteRangeEnd   [range end]
+	 * @param  errCode          [space to store error code]
+	 * @return                  [the number of deleted keys]
+	 */
 	int deleteReplicatedKeys(int deleteRangeStart, int deleteRangeEnd, int *errCode) {
 		int deleted = 0;
 		if(deleteRangeStart >= 0 && deleteRangeEnd >= 0) {
@@ -600,6 +624,11 @@ class KeyValueStore {
 		return deleted;
 	}
 
+	/**
+	 * [gets commands to replicate owned keys on another machine]
+	 * @param  errCode          [space to store error code]
+	 * @return                  [the commands]
+	 */
 	vector<string> getCommandsToReplicateOwnedKeys(int *errCode) {
 		//get all the keys owned by this store
 		vector<string> ownedKeys = getOwnedKeys(errCode);
@@ -614,6 +643,13 @@ class KeyValueStore {
 
 	/******************FAILURE HANDLING FUNCTIONS**********************************/
 
+	/*
+	 * [marks some keys as newly owned after failure and gets commands to replicate them in a replica]
+	 * @param  rangeStart [range start]
+	 * @param  rangeEnd   [range end]
+	 * @param  errCode    [space to store error code]
+	 * @return            [the commands]
+	 */
 	vector<string> getCommandsToReplicateNewOwnedKeysAtFailOrLeave(int rangeStart, int rangeEnd, int *errCode) {
 		vector<string> commands;
 		int status = 1;
@@ -650,29 +686,32 @@ class KeyValueStore {
 		return commands;
 	}
 
-        void showCachedEntries() {
-                list<string>::iterator cacheitr;
-                if(keyToValueReadCache.size() == 0)
-                        cout << "Read Cache Empty " << endl;
-                else {
+	/**
+	 * [shows the last 10 reads and writes]
+	 */
+    void showCachedEntries() {
+        list<string>::iterator cacheitr;
+        if(keyToValueReadCache.size() == 0)
+                cout << "Read Cache Empty " << endl;
+        else {
 			cout << "Last 10 Reads" << endl;
-                	for(cacheitr = keyToValueReadCache.begin();
-                	    cacheitr != keyToValueReadCache.end();
-                	    cacheitr++) {
-                        	cout << *cacheitr << endl;
-                	}
-                }
-                if(keyToValueWriteCache.size() == 0)
-                        cout << endl << "Write Cache Empty " << endl;
-                else {
-                	cout << endl << "Last 10 Writes" << endl;
-                	for(cacheitr = keyToValueWriteCache.begin();
-                	    cacheitr != keyToValueWriteCache.end();
-                	    cacheitr++) {
-                	        cout << *cacheitr << endl;
-                	}
-                }
+        	for(cacheitr = keyToValueReadCache.begin();
+        	    cacheitr != keyToValueReadCache.end();
+        	    cacheitr++) {
+                	cout << *cacheitr << endl;
+        	}
         }
+        if(keyToValueWriteCache.size() == 0)
+                cout << endl << "Write Cache Empty " << endl;
+        else {
+        	cout << endl << "Last 10 Writes" << endl;
+        	for(cacheitr = keyToValueWriteCache.begin();
+        	    cacheitr != keyToValueWriteCache.end();
+        	    cacheitr++) {
+        	        cout << *cacheitr << endl;
+        	}
+        }
+    }
 
 };
 

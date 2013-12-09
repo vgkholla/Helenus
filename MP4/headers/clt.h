@@ -545,6 +545,11 @@ class CommandLineTools {
 
 	/***********************************************************************************/
 
+	/**
+	 * [for a given command, gets the force version of the command]
+	 * @param  commandString [command given as input]
+	 * @return               [the force command]
+	 */
 	static string getForceCommand(string commandString) {
 		//find the first '-''
 		size_t firstDashPos = commandString.find_first_of("-");

@@ -464,12 +464,17 @@ class MembershipList {
 
 	}
 
+	/**
+	 * [returns if members of system are more than a particular number]
+	 * @param  size [the size being checked against]
+	 * @return      [whther number of members > size]
+	 */
 	int isKeyToIPMapGreaterThanSize(int size) {
 		return getNumberOfMembersInSystem() > size;
 	}
 
 	/**
-	 * [checks if the newly joined node is a predecessor. If it is, a message has to pushed to the coordinator]
+	 * [checks the role of this machine when a join happens and determines range of keys on which action action has to be taken, if any]
 	 * @param newNodeHash [the hash of the new node]
 	 */
     void handleJoin(int newNodeHash) {
@@ -525,12 +530,19 @@ class MembershipList {
     	}
     }
 
+    /**
+     *	NOT USED ANYMORE
+     */
     void handleLeave(int leavingNodeHash) {
     	if(keyToIPMap.find(leavingNodeHash) != keyToIPMap.end()) {
 			keyToIPMap.erase(leavingNodeHash); 
 		}
     }
 
+    /**
+     * [handles the failure event and pushes range of keys to be worked on into the coordinator if required]
+     * @param nodeHash [the hash of failed machine]
+     */
     void handleFailOrLeave(int nodeHash) {
     	//start building the message
 		Message message;
@@ -566,6 +578,11 @@ class MembershipList {
 
     /** Postion checking functions **/
 
+    /**
+     * [returns the machine at given distance]
+     * @param  distance [the distance]
+     * @return          [the machine]
+     */
     map<int,string>::iterator getMachineAtDistance(int distance) {
     	map<int,string>::iterator requiredMachine = keyToIPMap.end();
    		

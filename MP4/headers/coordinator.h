@@ -159,12 +159,20 @@ class Coordinator {
 		return messages.size();
 	}
 
+	/**
+	 * [pushes a new message to the coordinator]
+	 * @param message [the message to be pushed]
+	 */
 	void pushMessage(Message message) {
 		pthread_mutex_lock (&mutexsum);
 		messages.push_back(message);
 		pthread_mutex_unlock (&mutexsum);
 	}
 
+	/**
+	 * [pulls the first message in the coordinator (queue)]
+	 * @return [the message at the head of the queue]
+	 */
 	Message popMessage() {
 		pthread_mutex_lock (&mutexsum);
 		Message message = messages.front();
