@@ -1,0 +1,86 @@
+For running Helenus,
+
+Servers:
+
+	Description:
+
+	Servers are where the keys are stored. They make up the key-value store and interact with each other through gossiping and direct TCP connections.
+
+	Setting up:
+
+	1.	Create the directory to store log files (/tmp/ag)
+
+			The log files reside at /tmp/ag. Create the folder and the member writes its logs at this path as 
+		machine.i.log, where i is an unique number assigned to each member
+
+	2.	Ensure that boost libraries are installed in the system.
+
+	3.	Run make in the root folder (./macBuild.sh on a mac)
+			
+			The make creates an output binary P2P
+
+	4.	Bring up the members
+
+		Representative command follows:-
+		./P2P --src <machine_ip> --machineno <unique_machine_no> --interval <interval_of_gossip> --sendpct <percentage_of_packets_to_send>
+		(add a nohup at the beginning and a '&' at the end to push it to the background)
+
+		where 
+		    - machine_ip is the members own IP address
+		    - unique_machine_no is the unique member number (Always 1 for the master)
+		    - interval_of_gossip is the time interval to send membership list
+		    - percentage_of_packets_to_send is use to simulate percentage loss of packets. (Usually ignored - We used it for some testing. To use this feature, a flag '-DTESTING' needs to be set in the makefile in the CXXFLAGS field and some code might need to be uncommented)
+
+		    Port is always 45000
+
+	->	There must be a machine in the system with unique_id = 1. This machine is the join contact point (servers contact this machine to join)
+	->	Go to headers/membershipList.h and change MASTER_IP to the IP of the intended master machine before buliding
+	->	The master is ONLY a well known join contact point. Otherwise it is like any other member of the system. It can fail and the system will continue to operate, but there will be no joins accepted until it comes up
+
+Client:
+
+	Description:
+
+	The client provides a user facing interface to perform the database operations.
+	The client performs the following functions:-
+	    - insert key
+	    - lookup key
+	    - update key
+	    - delete key
+
+	Setting up:
+
+	1.	Compile the client
+		
+		g++ client.cpp -o client
+
+	2.	Run the client with the server IP and port as arguments
+
+		./client --dst <ip_of_server_to_connect_to> --port 45000
+
+	Operations:
+
+	Running the client outputs a prompt
+	
+	->	For insert
+		>>insert(key,value)
+	->	For lookup
+		>>lookup(key)
+	->	For delete
+		>>delete(key)
+	->	For update
+		>>update(key,new value)
+
+	This performs all operations with a consistency of ALL.
+	To perform operations with a consistency level of ONE, prefix all commands with 'o-'
+	To perform operations with a consistency level of QUORUM, prefix all commands with 'q-'
+
+	A command "show" can be used to display all keys and values at the local server
+	If server is not pushed to the background, run "show" command at the server prompt to see all keys and values at the server.
+	If server has been pushed to the background, you have to connect to each server individually and run "show" on the client which will show keys stored locally on the server which it is connected to. 
+
+	Press ctrl + c to fail a server.
+	
+	To make a member leave the system gracefully:
+	1. Run ps -ef | grep P2P to find the pid of the member
+	2. Issue the commmand kill -15 "process_pid" to send a signal to the member to leave the group.
