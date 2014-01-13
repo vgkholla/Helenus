@@ -10,8 +10,7 @@ Servers:
 
 	1.	Create the directory to store log files (/tmp/ag)
 
-			The log files reside at /tmp/ag. Create the folder and the member writes its logs at this path as 
-		machine.i.log, where i is an unique number assigned to each member
+			The log files reside at /tmp/ag. Create the folder and the member writes its logs at this path as machine.i.log, where i is an unique number assigned to each member
 
 	2.	Ensure that boost libraries are installed in the system.
 
