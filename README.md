@@ -32,5 +32,3 @@ Other details:
 Implementation details:
 
 Written in C++, uses pthread, boost and socket libraries
-
-Contributors: Gopalakrishna Holla (vgkholla), Alok Tiagi (aloktiagi)
