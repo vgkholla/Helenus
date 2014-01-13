@@ -19,7 +19,7 @@ Features:
 
 Other details:
 
-->	This system was built in stages as part of the Distributed Systems course at the UIUC in Fall 2013 (CS 425)
+->	This system was built in stages as part of the Distributed Systems course at UIUC in Fall 2013 (CS 425)
 
 ->	The BuildStages folder has the 4 stages we built it in. So it has a lot of testing files and results too.
 
@@ -32,3 +32,5 @@ Other details:
 Implementation details:
 
 Written in C++, uses pthread, boost and socket libraries
+
+Contributors: Gopalakrishna Holla (vgkholla), Alok Tiagi (aloktiagi)
